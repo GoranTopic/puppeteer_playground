@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer'
 
-async function get_proxies(){
+async function get_them_proxies(){
 		const browser = await puppeteer.launch();
 		console.log('Opening browser...')
 		const page = await browser.newPage();
@@ -17,7 +17,7 @@ async function get_proxies(){
 }
 
 async function main () {
-		const proxies = await get_proxies();
+		const proxies = await get_them_proxies();
 		console.log('proxies', proxies);
 }
 
