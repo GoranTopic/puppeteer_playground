@@ -32,8 +32,7 @@ const free_proxy_list_net = async page => {
 		proxies = proxies.split("\n")
 		// remove unwanted debries
 		Array(3).fill()
-				.map(() =>
-						proxies.shift() );
+				.map( () => proxies.shift() );
 		return proxies
 }
 
@@ -41,11 +40,14 @@ const scrapingant_free_proxies = async page => {
 		/* this functions parse the proxies form https://scrapingant.com/free-proxies/*/
 		// waitin for selectos method and then for evey elemene, get the textContent?
 		let proxies = []
-		await page.goto('https://scrapingant.com/free-proxies');
-		let elements = await page.$$('tr')
-		console.log('this ran')
-		console.log(elements);
-		//proxies = await getText(element) 
+		await page.goto('https://scrapingant.com/free-proxies', {
+				waitUntil: 'networkidle0', // wait until the page is fully loaded
+		});
+		let html = await page.content()
+		let elements = await page.$$('tbody > tr ')
+		//console.log(elements.constructor);
+		let text = await getText(elements) 
+		console.log(text)
 		// split by newline
 		return proxies
 }

@@ -1,21 +1,26 @@
 async function getText(elementHandler){
 		/* this function make my life easier by just printin the txt content of a elementHandler */
 		const handleElement = async element => {
-				if( elementHandler.constructor.name === 'ElementHandle' ){
-						const textContent  = await elementHandler.getProperty('textContent');
+				//console.log('name:', element.constructor.name)
+				if( element.constructor.name === 'ElementHandle' ){
+						const textContent  = await element.getProperty('textContent');
 						return await textContent.jsonValue();
 				}else{
-						console.error(`getText: got instance of ${elementHandler.constructor.name} instead of ElementHandle`)
+						console.error(`getText: got instance of ${element.constructor.name} instead of ElementHandle`)
 						return null
 				}
 		}
-		if( handleElement instanceof Array ){ // handle multiple elements
+		if( elementHandler instanceof Array ){ // handle multiple elements
 				let string = "";
-				for( let element of elementHandler)
-						string += await handleElement(element)
+				for(let i = 0; i < elementHandler.length; i++){
+						//console.log(elementHandler[i])
+						string += await handleElement(elementHandler[i])
+				}
 				return string;
-		}else // handle one element
+		}else{ // handle one element
+				console.log('this ran')
 				return await handleElement(elementHandler);
+		}
 }
 
 
