@@ -44,7 +44,7 @@ const scrapingant_free_proxies = async page => {
 				waitUntil: 'networkidle0', // wait until the page is fully loaded
 		});
 		let html = await page.content()
-		let elements = await page.$$('tbody > tr ')
+		let elements = await page.$$('tbody > tr >th:nth-child(1), tbody > tr >th:nth-child(2), ')
 		//console.log(elements.constructor);
 		let text = await getText(elements) 
 		console.log(text)
