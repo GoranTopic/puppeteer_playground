@@ -1,22 +1,5 @@
-import puppeteer from 'puppeteer';
+import { initBrowserDecorator } from './decorators.js'
 import { getText } from './utils.js';
-
-const initBrowserDecorator = func =>
-		/*@ decorator to create a browser is it has been not passed*/
-		async function(browser=null) {
-				let browserNotPassed = (browser)? false : true
-				// if browser is not passed
-				if( browserNotPassed ){
-						console.log('Opening browser...');
-						browser = await puppeteer.launch();
-				}
-				// wrap function
-				const result = await func(browser);
-				// close browser if we opened it 
-				if( browserNotPassed ) await browser.close();
-				return result;
-		}
-
 
 const free_proxy_list_net = async page => {
 		/* this functions parse the proxies form https://free-proxy-list.net/*/
@@ -30,24 +13,29 @@ const free_proxy_list_net = async page => {
 		proxies = await getText(element) 
 		// split by newline
 		proxies = proxies.split("\n")
-		// remove unwanted debries
-		Array(3).fill()
-				.map( () => proxies.shift() );
+		// remove 3 upper unwanted debries
+		Array(3).fill().map( () => proxies.shift() );
+		// remove 1 lower unwanted debries
+		proxies.pop();
+
 		return proxies
 }
 
 const scrapingant_free_proxies = async page => {
 		/* this functions parse the proxies form https://scrapingant.com/free-proxies/*/
-		// waitin for selectos method and then for evey elemene, get the textContent?
 		let proxies = []
+		// waitin for selectos method and then for evey elemene, get the textContent?
 		await page.goto('https://scrapingant.com/free-proxies', {
 				waitUntil: 'networkidle0', // wait until the page is fully loaded
 		});
+		// nice trick to see the whole content of the page
 		let html = await page.content()
-		let elements = await page.$$('tbody > tr >th:nth-child(1), tbody > tr >th:nth-child(2), ')
-		//console.log(elements.constructor);
-		let text = await getText(elements) 
-		console.log(text)
+		// get the ip and port elements in the html table
+		let elements = await page.$$('tbody > tr > td:nth-child(1), tbody > tr > td:nth-child(2)')
+		// add ip address and port togetherj
+		let texts = await getText(elements) 
+		for (let i = 0; i < texts.length; i+=2) 
+				proxies.push( texts[i] + ':' + texts[i + 1] )
 		// split by newline
 		return proxies
 }
@@ -63,9 +51,9 @@ const get_them_proxies =
 						const page = await browser.newPage();
 						console.log('opened new page..')
 						// get from free-proxy-list.net
-						//await free_proxy_list_net(page)
-						//		.then( new_proxies => // add them to set
-						//				new_proxies.forEach(addToSet) )
+						await free_proxy_list_net(page)
+								.then( new_proxies => // add them to set
+										new_proxies.forEach(addToSet) )
 						// get from scrapingant.com/free-proxies
 						await scrapingant_free_proxies(page)
 								.then( new_proxies => // add them to set
@@ -74,8 +62,6 @@ const get_them_proxies =
 						return proxies
 				}
 		)
-
-//https://scrapingant.com/free-proxies/
 
 const testProxies = async browser => {
 				// make new page
