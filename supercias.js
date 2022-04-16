@@ -4,11 +4,12 @@ import {
 		write_json,
 		shuffle,
 		save_cookies,
-		read_cookies } from './utils.js'
+		read_cookies 
+} from './utils.js'
 import spanish_alphbet from './resources/spanish_alphabet.js'
 
 
-const get_autocomplete_company_names = async page => {
+const scrap_company_names = async page => {
 		/* this function get the auto complete values from when looking for */ 
 		let company_names = new Set(),
 				target_url = 'https://appscvsmovil.supercias.gob.ec/PortalInfor/consultaPrincipal.zul',
@@ -28,22 +29,66 @@ const get_autocomplete_company_names = async page => {
 				console.log('saving permutations...')
 				write_json({ chars, length, permutations }, perm_filename)
 		}
-		// start scraping proccess
-		// make new page
-		read_cookies(page)
+		/* ---- start scraping proccess ---- */
 		// go to target url
 		await page.goto(target_url, {
 				waitUntil: 'networkidle0', // wait until the page is fully loaded
 		});
+		const payload = { 
+				dtid: 'z_8q90',
+				cmd_0: 'onChanging',
+				opt_0: 'i',
+				uuid_0: 'xZ2Yp',
+				data_0: { 
+						"value": "j",
+						"start": 1
+				}
+		}	
+
+		await gotoExtended(page, { 
+				url: 'https://appscvsmovil.supercias.gob.ec/PortalInfor/zkau', 
+				method: 'POST', 
+				postData: JSON.stringify(payload), 
+				headers 
+		});
+		console.log(await page.content());
+
 		// take screen shot
 		await page.screenshot({                      
 				path: "./screenshot.png",               
 				fullPage: true                           
 		});
-		// save the cookies
-		save_cookies(page)
 
 		return company_names;
 }
 
-export { get_autocomplete_company_names }
+async function gotoExtended(page, request) {
+		const { url, method, headers, postData } = request;
+
+    if (method !== 'GET' || postData || headers) {
+        let wasCalled = false;
+        await page.setRequestInterception(true);
+        const interceptRequestHandler = async (request) => {
+            try {
+                if (wasCalled) {
+                    return await request.continue();
+                }
+                wasCalled = true;
+                const requestParams = {};
+
+                if (method !== 'GET') requestParams.method = method;
+                if (postData) requestParams.postData = postData;
+                if (headers) requestParams.headers = headers;
+                await request.continue(requestParams);
+                await page.setRequestInterception(false);
+            } catch (error) {
+                log.debug('Error while request interception', { error });
+            }
+        };
+        await page.on('request', interceptRequestHandler);
+    }
+    return page.goto(url);
+}
+
+
+export { scrap_company_names }
