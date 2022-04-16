@@ -34,6 +34,8 @@ const scrap_company_names = async page => {
 		await page.goto(target_url, {
 				waitUntil: 'networkidle0', // wait until the page is fully loaded
 		});
+
+		/*
 		const payload = { 
 				dtid: 'z_8q90',
 				cmd_0: 'onChanging',
@@ -44,15 +46,22 @@ const scrap_company_names = async page => {
 						"start": 1
 				}
 		}	
-
 		await gotoExtended(page, { 
 				url: 'https://appscvsmovil.supercias.gob.ec/PortalInfor/zkau', 
 				method: 'POST', 
 				postData: JSON.stringify(payload), 
 				headers 
 		});
-		console.log(await page.content());
-
+		*/
+		// get the radion name
+		const name_radio = await page.$X("//label[text()='Nombre']/../input");
+		if (name_radio) { // click on the name radio
+				await name_radio.click();
+		}
+		// get the main text input
+		const text_input = await page.$X("//span[text()='Parámetro']/../input");
+		// type in search bar 
+		await text_input.type('input[name=pickupAgingComment]', 'test', {delay: 20})
 		// take screen shot
 		await page.screenshot({                      
 				path: "./screenshot.png",               
@@ -64,7 +73,6 @@ const scrap_company_names = async page => {
 
 async function gotoExtended(page, request) {
 		const { url, method, headers, postData } = request;
-
     if (method !== 'GET' || postData || headers) {
         let wasCalled = false;
         await page.setRequestInterception(true);
@@ -75,7 +83,6 @@ async function gotoExtended(page, request) {
                 }
                 wasCalled = true;
                 const requestParams = {};
-
                 if (method !== 'GET') requestParams.method = method;
                 if (postData) requestParams.postData = postData;
                 if (headers) requestParams.headers = headers;
