@@ -11,7 +11,6 @@
   "author": "Gora Topic",
   "license": "ISC",
   "dependencies": {
-    "pending-xhr-puppeteer": "^2.3.3",
     "puppeteer": "^13.5.2"
   }
 }

@@ -1,4 +1,3 @@
-import { PendingXHR } from 'pending-xhr-puppeteer'
 import { 
 		getText,
 		permutator,
@@ -15,6 +14,7 @@ import spanish_alphbet from './resources/spanish_alphabet.js'
 const scrap_company_names = async page => {
 		/* this function get the auto complete values from when looking for */ 
 		let company_names = new Set(),
+				new_names = [],
 				target_url = 'https://appscvsmovil.supercias.gob.ec/PortalInfor/consultaPrincipal.zul',
 				perm_filename = './resources/data/spanish_permutations.json',
 				chars = spanish_alphbet,
@@ -34,29 +34,9 @@ const scrap_company_names = async page => {
 		}
 		/* ---- start scraping proccess ---- */
 		// go to target url
-		const pendingXHR = new PendingXHR(page);
 		await page.goto(target_url, {
 				waitUntil: 'networkidle0', // wait until the page is fully loaded
 		});
-
-		/*
-		const payload = { 
-				dtid: 'z_8q90',
-				cmd_0: 'onChanging',
-				opt_0: 'i',
-				uuid_0: 'xZ2Yp',
-				data_0: { 
-						"value": "j",
-						"start": 1
-				}
-		}	
-		await gotoExtended(page, { 
-				url: 'https://appscvsmovil.supercias.gob.ec/PortalInfor/zkau', 
-				method: 'POST', 
-				postData: JSON.stringify(payload), 
-				headers 
-		});
-		*/
 		// get the radion name
 		const name_radio = (await page.$x("//label[text()='Nombre']/../input"))[0];
 		if (name_radio)  // click on the name radio
@@ -68,21 +48,24 @@ const scrap_company_names = async page => {
 		const text_input_ID = await (await real_text_input.getProperty('id')).jsonValue();
 		console.log('input_id:', text_input_ID);
 		// type in search bar 
-
-		await text_input.type(permutations.permutations[0], {delay: 100})
-		// wait
-		//await pendingXHR.waitForAllXhrFinished();
-		await waitForNetworkIdle(page, 2000)
+		for (let permutation of permutations.permutations){
+				for(let letter of permutation){
+						// add a letter
+						await text_input.type(letter, {delay: 200})
+						// wati for al networ to tover;
+						await waitForNetworkIdle(page, 2000)
+						// get companies names
+						new_names = await get_company_names(page);
+						// add them to the set
+						console.log(new_names)
+						new_names.forEach(name => company_names.add(name));
+				}
+				// save names
+				write_json([ ...company_names], './resources/data/company_names.json')
+				// clear text input
+				await page.$eval( '#'+ text_input_ID, input => input.value = "" );
+		}
 		// take screen shot
-		//await page.evaluate( id => document.getElementById(id).value = "something" , text_input_ID )
-
-		await page.$eval('#'+ text_input_ID, el => {
-				console.log("is this even running?"),
-				el.value = 'test@example.com'
-		});
-
-		await page.waitFor(2000)
-
 		await page.screenshot({                      
 				path: "./screenshot.png",               
 				fullPage: true                           
@@ -91,30 +74,16 @@ const scrap_company_names = async page => {
 		return company_names;
 }
 
-async function gotoExtended(page, request) {
-		const { url, method, headers, postData } = request;
-    if (method !== 'GET' || postData || headers) {
-        let wasCalled = false;
-        await page.setRequestInterception(true);
-        const interceptRequestHandler = async (request) => {
-            try {
-                if (wasCalled) {
-                    return await request.continue();
-                }
-                wasCalled = true;
-                const requestParams = {};
-                if (method !== 'GET') requestParams.method = method;
-                if (postData) requestParams.postData = postData;
-                if (headers) requestParams.headers = headers;
-                await request.continue(requestParams);
-                await page.setRequestInterception(false);
-            } catch (error) {
-                log.debug('Error while request interception', { error });
-            }
-        };
-        await page.on('request', interceptRequestHandler);
-    }
-    return page.goto(url);
+
+const get_company_names = async page => {
+	/* get all the compnay name if they are found*/	
+		// get the elements
+		let elements = await page.$x('/html/body/div[2]//td[2]')
+		// get the text content
+		let names = await getText(elements)
+		//trim n' preen
+		names = names.map( name => name.trim() );
+		return names
 }
 
 
