@@ -52,9 +52,9 @@ const scrap_company_names = async page => {
 		for (let permutation of permutations.permutations){
 				for(let letter of permutation){
 						// add a letter
-						await text_input.type(letter, {delay: 200})
+						await text_input.type(letter, {delay: 100})
 						// wati for al networ to tover;
-						await waitForNetworkIdle(page, 1000)
+						await waitForNetworkIdle(page, 500)
 						// get companies names
 						new_names = await get_company_names(page);
 						// add them to the set
