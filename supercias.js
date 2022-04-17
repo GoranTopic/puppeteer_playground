@@ -30,7 +30,8 @@ const scrap_company_names = async page => {
 				permutations = shuffle(permutations);
 				console.log(`permutations done.\n${permutations.length} permutations generated`)
 				console.log('saving permutations...')
-				write_json({ chars, length, permutations }, perm_filename)
+				permutations = { chars, length, permutations };
+				write_json(permutations, perm_filename)
 		}
 		/* ---- start scraping proccess ---- */
 		// go to target url
