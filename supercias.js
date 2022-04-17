@@ -54,7 +54,7 @@ const scrap_company_names = async page => {
 						// add a letter
 						await text_input.type(letter, {delay: 200})
 						// wati for al networ to tover;
-						await waitForNetworkIdle(page, 2000)
+						await waitForNetworkIdle(page, 1000)
 						// get companies names
 						new_names = await get_company_names(page);
 						// add them to the set
