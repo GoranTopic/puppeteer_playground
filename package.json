@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "main.js",
-	"type": "module",
+  "type": "module",
   "scripts": {
     "start": "node main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,6 +11,7 @@
   "author": "Gora Topic",
   "license": "ISC",
   "dependencies": {
+    "pending-xhr-puppeteer": "^2.3.3",
     "puppeteer": "^13.5.2"
   }
 }

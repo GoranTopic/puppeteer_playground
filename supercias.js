@@ -1,10 +1,13 @@
+import { PendingXHR } from 'pending-xhr-puppeteer'
 import { 
+		getText,
 		permutator,
 		read_json,
 		write_json,
 		shuffle,
 		save_cookies,
-		read_cookies 
+		read_cookies,
+		waitForNetworkIdle,
 } from './utils.js'
 import spanish_alphbet from './resources/spanish_alphabet.js'
 
@@ -31,6 +34,7 @@ const scrap_company_names = async page => {
 		}
 		/* ---- start scraping proccess ---- */
 		// go to target url
+		const pendingXHR = new PendingXHR(page);
 		await page.goto(target_url, {
 				waitUntil: 'networkidle0', // wait until the page is fully loaded
 		});
@@ -54,15 +58,31 @@ const scrap_company_names = async page => {
 		});
 		*/
 		// get the radion name
-		const name_radio = await page.$X("//label[text()='Nombre']/../input");
-		if (name_radio) { // click on the name radio
+		const name_radio = (await page.$x("//label[text()='Nombre']/../input"))[0];
+		if (name_radio)  // click on the name radio
 				await name_radio.click();
-		}
+		await page.waitFor(1000)
 		// get the main text input
-		const text_input = await page.$X("//span[text()='Parámetro']/../input");
+		const text_input = (await page.$x("//span[text()='Parámetro']/../input"))[0];
+		const real_text_input = (await page.$x("//span[text()='Parámetro']/../i/input"))[0];
+		const text_input_ID = await (await real_text_input.getProperty('id')).jsonValue();
+		console.log('input_id:', text_input_ID);
 		// type in search bar 
-		await text_input.type('input[name=pickupAgingComment]', 'test', {delay: 20})
+
+		await text_input.type(permutations.permutations[0], {delay: 100})
+		// wait
+		//await pendingXHR.waitForAllXhrFinished();
+		await waitForNetworkIdle(page, 2000)
 		// take screen shot
+		//await page.evaluate( id => document.getElementById(id).value = "something" , text_input_ID )
+
+		await page.$eval('#'+ text_input_ID, el => {
+				console.log("is this even running?"),
+				el.value = 'test@example.com'
+		});
+
+		await page.waitFor(2000)
+
 		await page.screenshot({                      
 				path: "./screenshot.png",               
 				fullPage: true                           

@@ -20,13 +20,13 @@ async function main () {
 		// get already opned page
 		const page = (await browser.pages())[0];
 		// read the cookies 
-		read_cookies(page)
+		await read_cookies(page)
 		//const proxies = await get_them_proxies(browser);
 		//console.log('proxies', proxies);
 		const names = await scrap_company_names(page);
 		console.log('company names', names);
 		// save the cookies
-		save_cookies(page)
+		await save_cookies(page)
 		// let's close the browser
 		console.log('closing browser...')
 		await browser.close();
