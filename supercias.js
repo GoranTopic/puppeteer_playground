@@ -19,7 +19,7 @@ const scrap_company_names = async page => {
 		// click on the name radio
 		if (name_radio)  await name_radio.click();
 		// wait a second for page to load
-		await page.waitFor(1000)
+		await page.mainFrame().waitForTimeout(1000)
 		// get the main text input
 		const text_input = (await page.$x("//span[text()='Parámetro']/../input"))[0];
 		const real_text_input = (await page.$x("//span[text()='Parámetro']/../i/input"))[0];
@@ -65,12 +65,10 @@ const get_company_names = async page => {
 const create_company_names = () => {
 		/* if there is already some company_names file, don't make a new one */
 		let array = read_json('./resources/data/company_names.json')
-		if(array)
-				return new Set(array)
+		if(array) return new Set(array)
 		return new Set()
 		
 }
-
 
 const get_compnay_ID = async page => {
 		// go to target url
