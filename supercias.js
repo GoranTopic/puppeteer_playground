@@ -4,15 +4,16 @@ import { getText, read_json, write_json, save_cookies, read_cookies, } from './u
 
 const scrap_company_names = async page => {
 		/* this function get the auto complete values from when looking for */ 
-		let company_names = new Set(),
-				new_names = [],
-				target_url = 'https://appscvsmovil.supercias.gob.ec/PortalInfor/consultaPrincipal.zul',
-				permutations = get_permutations()
+		let target_url = 'https://appscvsmovil.supercias.gob.ec/PortalInfor/consultaPrincipal.zul',
+				company_names = create_company_names(),
+				permutations = get_permutations(),
+				new_names = []
 		/* ---- start scraping proccess ---- */
 		// go to target url
 		await page.goto(target_url, 
 				{ waitUntil: 'networkidle0', } // wait until the page is fully loaded
 		);
+		console.log('company_names', company_names.constructor.name);
 		// get the radion name
 		const name_radio = (await page.$x("//label[text()='Nombre']/../input"))[0];
 		// click on the name radio
@@ -59,6 +60,15 @@ const get_company_names = async page => {
 		//trim n' preen
 		names = names.map( name => name.trim() );
 		return names
+}
+
+const create_company_names = () => {
+		/* if there is already some company_names file, don't make a new one */
+		let array = read_json('./resources/data/company_names.json')
+		if(array)
+				return new Set(array)
+		return new Set()
+		
 }
 
 
