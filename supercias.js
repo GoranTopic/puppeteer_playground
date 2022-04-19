@@ -1,47 +1,23 @@
-import { 
-		getText,
-		permutator,
-		read_json,
-		write_json,
-		shuffle,
-		save_cookies,
-		read_cookies,
-		waitForNetworkIdle,
-} from './utils.js'
-import spanish_alphbet from './resources/spanish_alphabet.js'
-
+import { get_permutations } from './permutations.js'
+import waitUntilRequestDone from './waitForNetworkIdle.js'
+import { getText, read_json, write_json, save_cookies, read_cookies, } from './utils.js'
 
 const scrap_company_names = async page => {
 		/* this function get the auto complete values from when looking for */ 
 		let company_names = new Set(),
 				new_names = [],
 				target_url = 'https://appscvsmovil.supercias.gob.ec/PortalInfor/consultaPrincipal.zul',
-				perm_filename = './resources/data/spanish_permutations.json',
-				chars = spanish_alphbet,
-				length = 5, /// max number without running out of heap space,
-				permutations // might have to try with python
-		// try to read permutations file
-		permutations = read_json(perm_filename);
-		// if something has changed ot not found
-		if(permutations === null || permutations.length !== length || permutations.chars !== chars){
-				// generate new permutations file 
-				console.log('generating permutations...')
-				permutations = permutator(chars, length);
-				permutations = shuffle(permutations);
-				console.log(`permutations done.\n${permutations.length} permutations generated`)
-				console.log('saving permutations...')
-				permutations = { chars, length, permutations };
-				write_json(permutations, perm_filename)
-		}
+				permutations = get_permutations()
 		/* ---- start scraping proccess ---- */
 		// go to target url
-		await page.goto(target_url, {
-				waitUntil: 'networkidle0', // wait until the page is fully loaded
-		});
+		await page.goto(target_url, 
+				{ waitUntil: 'networkidle0', } // wait until the page is fully loaded
+		);
 		// get the radion name
 		const name_radio = (await page.$x("//label[text()='Nombre']/../input"))[0];
-		if (name_radio)  // click on the name radio
-				await name_radio.click();
+		// click on the name radio
+		if (name_radio)  await name_radio.click();
+		// wait a second for page to load
 		await page.waitFor(1000)
 		// get the main text input
 		const text_input = (await page.$x("//span[text()='Parámetro']/../input"))[0];
@@ -54,7 +30,7 @@ const scrap_company_names = async page => {
 						// add a letter
 						await text_input.type(letter, {delay: 100})
 						// wati for al networ to tover;
-						await waitForNetworkIdle(page, 500)
+						await waitUntilRequestDone(page, 500)
 						// get companies names
 						new_names = await get_company_names(page);
 						// add them to the set
@@ -67,14 +43,12 @@ const scrap_company_names = async page => {
 				await page.$eval( '#'+ text_input_ID, input => input.value = "" );
 		}
 		// take screen shot
-		await page.screenshot({                      
-				path: "./screenshot.png",               
-				fullPage: true                           
+		await page.screenshot({
+				path: "./screenshot.png",
+				fullPage: true
 		});
-
 		return company_names;
 }
-
 
 const get_company_names = async page => {
 	/* get all the compnay name if they are found*/	
@@ -88,4 +62,41 @@ const get_company_names = async page => {
 }
 
 
-export { scrap_company_names }
+const get_compnay_ID = async page => {
+		// go to target url
+		let names = read_json('./resources/data/company_names.json');
+		let target_url = 'https://appscvsmovil.supercias.gob.ec/PortalInfor/consultaPrincipal.zul'
+		await page.goto( target_url, // wait until the page is fully loaded
+				{ waitUntil: 'networkidle0', }
+		);
+		//radio name button selector
+		const radio_selector = '//label[text()="Nombre"]/../input'
+		// get the radion 
+		const radio_el = (await page.$x(radio_selector))[0];
+		// click on the name radio
+		if (radio_el) await radio_el.click();
+		// until it loads the name
+		await page.waitFor(1000) 
+		// get the main text input
+		const text_input = ( await page.$x("//span[text()='Parámetro']/../input") )[0];
+		const real_text_input = ( await page.$x("//span[text()='Parámetro']/../i/input") )[0];
+		const text_input_ID = await (await real_text_input.getProperty('id')).jsonValue();
+
+		// get button element  
+		const search_button = ( await page.$x("//td[text()='Buscar']/../../.."))[0];
+		//for( let name of names){
+		//type name of company
+		await text_input.type(names[0], {delay: 10})
+		// click search 
+		search_button.click()
+		//}
+		
+		// take screen shot
+		await page.screenshot({
+				path: "./screenshot.png",
+				fullPage: true           
+		});
+		return null;
+}
+
+export { scrap_company_names, get_compnay_ID }
