@@ -4,7 +4,7 @@ import { getText, read_json, write_json, save_cookies, read_cookies, } from '../
 
 const scrap_companies = async page => {
 		// go to target url
-		let names = read_json('./resources/data/company_names.json');
+		let names = read_json('mined_data/company_names.json');
 		let target_url = 'https://appscvsmovil.supercias.gob.ec/PortalInfor/consultaPrincipal.zul'
 		await page.goto( target_url, // wait until the page is fully loaded
 				{ waitUntil: 'networkidle0', }
