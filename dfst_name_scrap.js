@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 import { save_cookies, read_cookies, clean_company_names } from './utils.js'
-import { scrap_bfst_company_names } from  './supercias/scrap_names.js'
+import { scrap_dfst_company_names } from  './supercias/scrap_names.js'
 import browserOptions from './options/browser_options.js'
 
 async function random_name_scrap () {
@@ -13,7 +13,7 @@ async function random_name_scrap () {
 		// read the cookies 
 		await read_cookies(page)
 		// scrapt comanies names at with random permutations
-		const names = await scrap_bfst_company_names(page);
+		const names = await scrap_dfst_company_names(page);
 		//console.log('company names', names);
 		// save the cookies
 		await save_cookies(page)

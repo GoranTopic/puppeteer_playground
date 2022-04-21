@@ -96,7 +96,7 @@ const get_last_recursion = () => {
 }
 
 
-const scrap_bfst_company_names = async (page, depth) => {
+const scrap_dfst_company_names = async (page, depth) => {
 		/* this function scraps the name of the companie using a depth first search tree aproach */
 		let company_names = create_company_names(),
 				permutations = get_permutations(),
@@ -186,4 +186,4 @@ const scrap_bfst_company_names = async (page, depth) => {
 		return company_names;
 }
 
-export { scrap_random_company_names, scrap_bfst_company_names }
+export { scrap_random_company_names, scrap_dfst_company_names }
