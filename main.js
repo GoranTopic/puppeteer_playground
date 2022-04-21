@@ -1,37 +1,34 @@
 import puppeteer from 'puppeteer';
-//import { get_them_proxies } from './proxies.js';
-import { scrap_company_names, get_compnay_ID } from  './supercias.js'
-import { save_cookies, read_cookies } from './utils.js'
-
-const browserOptions = { 
-		/* options to pass to the browser, 
-		 idealy read from file */
-		//executablePath: "/snap/bin/chromium",
-		headless: false,
-		slowMo: 1,
-		// excludeSwitches: 'enable-automation',
-		//args: [ '--user-data-dir=./.config/google-chrome/' ],
-}
+import { save_cookies, read_cookies, clean_company_names } from './utils.js'
+import spanish_alphbet from './resources/spanish_alphabet.js'
+import scrap_companies_ids from  './supercias/scrap_ids.js'
+import browserOptions from './options/browser_options.js'
 
 async function main () {
 		// let's open a new browser
-		console.log('Launching browser...')
-		const browser = await puppeteer.launch(browserOptions);
+		/* replace non breaking paces in scraped names */
+		const sort = str => str.split('').sort((a, b) => a.localeCompare(b)).join('');
+		clean_company_names('./mined_data/company_names.json')
+		console.log(sort(spanish_alphbet))
+		console.log( "00" > "0" )
+						
+		//console.log('Launching browser...')
+		//const browser = await puppeteer.launch(browserOptions);
 		// get already opend page
-		const page = (await browser.pages())[0];
+		//const page = (await browser.pages())[0];
 		// read the cookies 
-		await read_cookies(page)
+		//await read_cookies(page)
 		//const proxies = await get_them_proxies(browser);
 		//console.log('proxies', proxies);
-		const names = await scrap_company_names(page);
-		console.log('company names', names);
-		//const ids = await get_compnay_ID(page)
+		//const names = await scrap_company_names(page);
+		//console.log('company names', names);
+		//const ids = await scrap_companies_ids(page)
 		//console.log('ids:', ids)
 		// save the cookies
-		await save_cookies(page)
+		//await save_cookies(page)
 		// let's close the browser
-		console.log('closing browser...')
-		await browser.close();
+		//console.log('closing browser...')
+		//await browser.close();
 }
 
 

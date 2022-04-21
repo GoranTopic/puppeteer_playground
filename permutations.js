@@ -2,9 +2,9 @@ import { read_json, write_json } from './utils.js'
 import spanish_alphbet from './resources/spanish_alphabet.js'
 
 const get_permutations = () => {
-		let perm_filename = './resources/data/spanish_permutations.json',
+		let perm_filename = './resources/generated/spanish_permutations.json',
 				chars = spanish_alphbet,
-				length = 5, // max number without running out of heap space,
+				length = 4, // max number without running out of heap space,
 				// might have to try with python
 				// try to read permutations file
 				permutations = read_json(perm_filename);
@@ -131,7 +131,5 @@ const unfoldr = (f, v) => {
 				}
 		}
 };
-
-
 
  export { get_permutations }

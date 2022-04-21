@@ -35,7 +35,17 @@ const write_json = (obj, path) => {
 		}
 }
 
-const cookies_filename = 'cookie-jar.json'
+const read_json = path => {
+		try{
+				let str = fs.readFileSync(path);
+				return JSON.parse(str)
+		}catch(e) {
+				console.error('could not read file ' + e);
+				return null
+		}
+}
+
+const cookies_filename = './resources/generated/cookie-jar.json'
 // cookie file
 const save_cookies = async page =>{
 		/* this function save from the browser */
@@ -63,14 +73,23 @@ const read_cookies = async page => {
 		}
 	}
 
-const read_json = path => {
-		try{
-				let str = fs.readFileSync(path);
-				return JSON.parse(str)
-		}catch(e) {
-				console.error('could not read file');
-				return null
-		}
+const clean_company_names = filepath => {
+		let array = read_json(filepath)
+		array = replace_nonbreak_spaces(array)
+		console.log(array)
+		write_json([ ...array], filepath)
 }
 
-export { getText, read_json, write_json, save_cookies, read_cookies }
+const replace_nonbreak_spaces = input => {
+		/* this functions takes a strinig or an array of string an replace them
+		 * the jq nonbreking space with a regular space */
+		let regex = new RegExp(String.fromCharCode(160), "g");
+		return input instanceof Array ? 
+				// handle multiple elements
+				input.map( str => str.replace(regex, " ") ) :
+				// handle just one element
+				input.replace(regex, " ") ;
+}
+
+
+export { getText, read_json, write_json, save_cookies, read_cookies, replace_nonbreak_spaces, clean_company_names }
