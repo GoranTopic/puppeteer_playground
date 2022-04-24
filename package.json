@@ -5,7 +5,8 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "start": "node main.js",
+    "start": "node start.js",
+    "main": "node main.js",
     "random_name_scrap": "node random_name_scrap.js",
     "dfst_name_scrap": "node dfst_name_scrap.js",
     "test": "echo \"Error: no test specified\" && exit 1"
