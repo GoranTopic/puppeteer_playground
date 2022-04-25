@@ -40,7 +40,7 @@ const scrapingant_free_proxies = async page => {
 		return proxies
 }
 
-const get_them_proxies = 
+const get_free_online_proxies = 
 		initBrowserDecorator( 
 				/* parses the proxies form various websites */
 				async browser => {
@@ -71,6 +71,15 @@ const testProxies = async browser => {
 				await page.goto('');
 		}
 		
+const get_premium_proxies = 
 
+class ProxyRotator {
+		constructor(){
+				this.proxies = [ 
+						get_them_proxies(),
+						get_premium_proxies(),
+				]
+		}
+}
 
 export { get_them_proxies }

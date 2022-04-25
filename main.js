@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 import { save_cookies, read_cookies } from './utils.js'
 import { scrap_ids, handle_home_page_click  } from  './supercias/scrap_ids.js'
-import browserOptions from './options/browser_options.js'
+import browserOptions from './options/browser.js'
 
 async function main () {
 		// let's open a new browser

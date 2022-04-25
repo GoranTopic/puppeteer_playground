@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 import { save_cookies, read_cookies, clean_company_names } from './utils.js'
 import { scrap_dfst_company_names } from  './supercias/scrap_names.js'
-import browserOptions from './options/browser_options.js'
+import browserOptions from './options/browser.js'
 
 async function random_name_scrap () {
 		// let's open a new browser

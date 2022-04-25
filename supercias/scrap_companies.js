@@ -121,8 +121,7 @@ const timeoutAfter = timeout => {
 const scrap_ids = async page => {
 		/* scrap ids */
 		let names = read_json('mined_data/company_names.json'),
-				// 1000ms * 60s  * 2 =  2m
-				timeout = 1000 * 60 * 2, 
+				timeout = 1000 * 100,
 				id;
 		// check the integriy of the id file
 		let [ ids, missing_ids ] = check_integrity( names, get_ids() );
