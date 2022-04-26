@@ -134,7 +134,6 @@ const scrap_ids = async page => {
 		try{ // catch all
 				for (let i of missing_ids){
 						// scrap the id from name
-						//let timed_out_ID = null;
 						const id = await Promise.race([
 								scrap_id(page, names[i]),
 								timeoutAfter(timeout)

@@ -1,5 +1,6 @@
-import { initBrowserDecorator } from './decorators.js'
+import { initBrowserDecorator } from './decorators.js';
 import { getText } from './utils.js';
+import fs from 'fs';
 
 const free_proxy_list_net = async page => {
 		/* this functions parse the proxies form https://free-proxy-list.net/*/
@@ -71,15 +72,122 @@ const testProxies = async browser => {
 				await page.goto('');
 		}
 		
-const get_premium_proxies = 
+const get_premium_proxies = () => {
+		let filename =  './resources/proxies/proxyscrape_premium_http_proxies.txt',
+				proxies = [];
+		fs.readFile(filename, 'utf-8', (err, data) => {
+				if (err) throw err;
+				// Converting Raw Buffer to text
+				// data using tostring function.
+				proxies = data.split(/\r?\n/);
+		})
+		return proxies
+}
 
 class ProxyRotator {
 		constructor(){
-				this.proxies = [ 
-						get_them_proxies(),
-						get_premium_proxies(),
-				]
+				let initial_proxy_pool = [
+						...get_premium_proxies()
+				];
+				// 1000ms * 60s * 60m = 1h
+				this.timeout_rate = 1000 * 60 * 60;
+				this.alive = [];
+				this.dead = [];
+				this.unknown = [];
+				this.ui = 0;
+				this.ai = 0;
+				this.di = 0;
+				this.add_new_proxies(initial_proxy_pool);
+				console.log( get_premium_proxies() )
 		}
+
+		find_proxy_by_str(str){
+				let proxy_pool = [ ...this.alive, ...this.dead, ...this.unknown ];
+				return proxy_pool.filter( proxy => str === proxy )[0];
+		}
+
+		remove_proxy_by_str(str){
+				let pools = [ this.alive, this.dead, this.unknown ];
+				pools.forEach( pool => 
+						pool = pool.filter( proxy => proxy.proxy !== str )
+				)
+		}
+
+		add_new_proxies(proxies){
+				proxies.forEach( proxy => 
+						this.unknown.push({
+								status:'unknown', 
+								timeoutID: null,
+								times_resurected: null,
+								ip: proxy.split(':')[0],
+								port: proxy.split(':')[1],
+								proxy
+						})
+				)
+		}
+
+		str_param_decorator = func => 
+				function(proxy){
+						if( proxy instanceof String )
+								proxy = find_proxy_by_str( proxy );
+						return func(proxy)
+				}
+
+		async getOnlineFreeProxies() {
+				let new_proxies = await get_free_online_proxies();
+				this.add_new_proxies(new_proxies);
+		}
+
+		getNext = () => {
+				if(this.unknown.length === 0) return null
+				else if(this.ui <= this.unknown.length) this.ui = 0;
+				return  this.unknown[ui++];
+		}
+
+		getAlive = () => {
+				if(this.alive.length === 0) return null
+				else if(this.ai <= this.alive.length) this.ai = 0;
+				return  this.alive[ai++];
+		}
+
+		setAlive = this.str_param_decorator( proxy =>  {
+				// remove from 
+				this.remove_proxy_by_str(proxy.proxy);
+				proxy.status = 'Alive';
+				if(proxy.timeoutID){
+						clearTimeout(proxy.timeoutID)
+						proxy.timeoutID = null;
+				}
+				this.alive.push(proxy);
+		})
+
+		setDead = this.str_param_decorator( proxy =>  {
+				this.remove_proxy_by_str(proxy.proxy);
+				proxy.status = 'Dead';
+				if(proxy.timeoutID){
+						clearTimeout(proxy.timeoutID)
+						proxy.timeoutID = setTimeout( 
+								this.resurect_proxy(proxy), 
+								this.timeout_rate * ( proxy.times_resurected ?? 1 )
+						);
+				}
+				this.dead.push(proxy);
+		})
+
+		resurect_proxy( proxy ){
+				// remove from 
+				this.remove_proxy_by_str(proxy.proxy);
+				proxy.status = 'Alive';
+				proxy.times_resurected += 1;
+				proxy.timeoutID = null;
+				this.alive.push(proxy);
+		}
+
 }
 
-export { get_them_proxies }
+const rotator = new ProxyRotator();
+
+//console.log(rotator.getNext())
+  
+
+export { ProxyRotator, get_free_online_proxies, get_premium_proxies }
