@@ -104,17 +104,28 @@ class ProxyRotator {
 				return proxy_pool.filter( proxy => str === proxy )[0];
 		}
 
-		remove_proxy_by_str(str){
+		remove_proxy_from_all(str){
 				// remove proxy from any list it is in
 				this.queue = this.queue.filter( proxy => proxy.proxy !== str )
 				this.dead = this.dead.filter( proxy => proxy.proxy !== str )
+		}
+
+
+		remove_proxy_from_queue(str){
+				// remove proxy from queue
+				this.dead = this.dead.filter( proxy => proxy.proxy !== str )
+		}
+
+		remove_proxy_from_dead(str){
+				// remove proxy from any dead list
+				this.queue = this.queue.filter( proxy => proxy.proxy !== str )
 		}
 
 		add_new_proxies(proxies){
 				// with a list of proxies, add them to the queue
 				proxies.forEach( proxy => 
 						this.queue.push({
-								status:'unknown', 
+								status:'Unknown', 
 								timeoutID: null,
 								times_resurected: null,
 								ip: proxy.split(':')[0],
@@ -139,7 +150,7 @@ class ProxyRotator {
 				this.add_new_proxies(new_proxies);
 		}
 
-		getProxy = () => {
+		next = () => {
 				if(this.queue.length === 0){
 						// there are not proxies
 						console.error("no proxies in queue");
@@ -161,7 +172,7 @@ class ProxyRotator {
 				}
 				let proxy = null;
 				for(let i =0;i<this.queue.length;i++)
-						if( proxy[i].status === "Alive"){
+						if( this.queue[i].status === "Alive"){
 								// get first Alive proxy
 								proxy = this.queue.splice(i,1);
 								// add it to the end
@@ -173,18 +184,17 @@ class ProxyRotator {
 		}
 
 		setAlive = this.str_param_decorator( proxy =>  {
-				// remove from 
-				this.remove_proxy_by_str(proxy.proxy);
-				proxy.status = 'Alive';
-				if(proxy.timeoutID){
-						clearTimeout(proxy.timeoutID)
-						proxy.timeoutID = null;
-				}
-				this.alive.push(proxy);
+				// if it is dead 
+				if(proxy.status === "Dead")
+						// bring it back to life
+						this.resurect_proxy(proxy, "Alive")
+				// if it is unknown
+				else if(proxy.status === "Unknown")
+						proxy.status = "Alive";
 		})
 
 		setDead = this.str_param_decorator( proxy =>  {
-				this.remove_proxy_by_str(proxy.proxy);
+				this.remove_proxy_from_queue(proxy.proxy);
 				proxy.status = 'Dead';
 				if(proxy.timeoutID){
 						clearTimeout(proxy.timeoutID)
@@ -196,26 +206,33 @@ class ProxyRotator {
 				this.dead.push(proxy);
 		})
 
-		resurect_proxy( proxy ){
-				this.remove_proxy_by_str(proxy.proxy);
-				proxy.status = 'Alive';
+		resurect_proxy( proxy, status="Unknown" ){
+				this.remove_proxy_from_dead(proxy.proxy);
+				proxy.status = status;
 				proxy.times_resurected += 1;
 				proxy.timeoutID = null;
-				this.alive.push(proxy);
+				this.queue.push(proxy);
 		}
 
 }
 
-/*
 const r = new ProxyRotator();
 
-let proxy = r.getNext()
+let proxy = r.next()
 console.log(proxy)
 
 r.setAlive(proxy)
-proxy = r.getNext()
+proxy = r.next()
 console.log(proxy)
-*/
+
+proxy = r.getAlive()
+console.log(proxy)
+
+r.setDead(proxy)
+console.log(proxy)
+r.setAlive(proxy)
+console.log(proxy)
+
 
 
 export { ProxyRotator, get_free_online_proxies, get_premium_proxies }
