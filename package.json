@@ -7,8 +7,10 @@
   "scripts": {
     "start": "node start.js",
     "main": "node main.js",
-    "random_name_scrap": "node random_name_scrap.js",
-    "dfst_name_scrap": "node dfst_name_scrap.js",
+    "ids": "node ids_scrap.js",
+    "names": "node random_name_scrap.js",
+    "random_names": "node random_name_scrap.js",
+    "dfst_names": "node dfst_name_scrap.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Gora Topic",

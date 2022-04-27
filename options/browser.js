@@ -5,5 +5,5 @@ export default {
 		headless: false,
 		slowMo: 1,
 		// excludeSwitches: 'enable-automation',
-		//args: [ '--user-data-dir=./.config/google-chrome/' ],
+		args: [ '--proxy-server=138.50.50.50:38886' ]
 }

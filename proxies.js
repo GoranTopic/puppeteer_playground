@@ -75,12 +75,12 @@ const testProxies = async browser => {
 const get_premium_proxies = () => {
 		let filename =  './resources/proxies/proxyscrape_premium_http_proxies.txt',
 				proxies = [];
-		fs.readFile(filename, 'utf-8', (err, data) => {
-				if (err) throw err;
-				// Converting Raw Buffer to text
-				// data using tostring function.
+		try{
+				let data = fs.readFileSync(filename, 'utf-8')
 				proxies = data.split(/\r?\n/);
-		})
+		}catch(e){
+				console.log(e);
+		}
 		return proxies
 }
 
@@ -98,7 +98,6 @@ class ProxyRotator {
 				this.ai = 0;
 				this.di = 0;
 				this.add_new_proxies(initial_proxy_pool);
-				console.log( get_premium_proxies() )
 		}
 
 		find_proxy_by_str(str){
@@ -107,10 +106,9 @@ class ProxyRotator {
 		}
 
 		remove_proxy_by_str(str){
-				let pools = [ this.alive, this.dead, this.unknown ];
-				pools.forEach( pool => 
-						pool = pool.filter( proxy => proxy.proxy !== str )
-				)
+				this.alive = this.alive.filter( proxy => proxy.proxy !== str )
+				this.dead = this.dead.filter( proxy => proxy.proxy !== str )
+				this.unknown = this.unknown.filter( proxy => proxy.proxy !== str )
 		}
 
 		add_new_proxies(proxies){
@@ -141,13 +139,13 @@ class ProxyRotator {
 		getNext = () => {
 				if(this.unknown.length === 0) return null
 				else if(this.ui <= this.unknown.length) this.ui = 0;
-				return  this.unknown[ui++];
+				return this.unknown[this.ui++];
 		}
 
 		getAlive = () => {
 				if(this.alive.length === 0) return null
 				else if(this.ai <= this.alive.length) this.ai = 0;
-				return  this.alive[ai++];
+				return  this.alive[this.ai++];
 		}
 
 		setAlive = this.str_param_decorator( proxy =>  {
@@ -175,7 +173,6 @@ class ProxyRotator {
 		})
 
 		resurect_proxy( proxy ){
-				// remove from 
 				this.remove_proxy_by_str(proxy.proxy);
 				proxy.status = 'Alive';
 				proxy.times_resurected += 1;
@@ -185,9 +182,16 @@ class ProxyRotator {
 
 }
 
-const rotator = new ProxyRotator();
+/*
+const r = new ProxyRotator();
 
-//console.log(rotator.getNext())
-  
+let proxy = r.getNext()
+console.log(proxy)
+
+r.setAlive(proxy)
+proxy = r.getNext()
+console.log(proxy)
+*/
+
 
 export { ProxyRotator, get_free_online_proxies, get_premium_proxies }

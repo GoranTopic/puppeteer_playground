@@ -82,15 +82,21 @@ const scrap_id = async (page, name, debug=false) => {
 		let search_button = ( await page.$x("//td[text()='Buscar']/../../..") )[0];
 		// type name of company
 		debuging && console.log("typing name")
-		await text_input.type(name, {delay: 1});
+		await text_input.type(name, {delay: 10});
+		await waitUntilRequestDone(page, 1000)
+		// get from options
+		await page.keyboard.press('ArrowLeft');
+		// remove suggestion
+		await page.keyboard.press('Enter');
 		// wait until for a little
 		await waitUntilRequestDone(page, 1000)
 		// click seach button
 		debuging && console.log("clicking search_button")
-		await search_button.click();
+		await search_button.click({delay: 1});
 		// wait until new page loads
 		debuging && console.log("waiting for new page to load")
 		await waitUntilRequestDone(page, 1000);
+		//await page.waitForTimeout(10000);
 		// get the url value 
 		let url = page.url();
 		// if  something whent wrong

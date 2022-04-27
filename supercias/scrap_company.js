@@ -3,6 +3,35 @@ import { getText, read_json, write_json, save_cookies, read_cookies, } from '../
 import { consulta_principal_url, home_page_url } from '../urls.js';
 import debuging from '../options/debug.js'
 
+const scrap_company = async ( browser, name ) => 
+		new Promise( (resolve, reject) => {
+				/* replace non breaking paces in scraped names */
+				let scrapingError = 0,
+						max_errors = 5,
+						page,
+						res
+				// get already opend page
+				page = ( await browser.pages() )[0];
+				// start scraping
+				while(scrapingError < max_errors){
+						// read the cookies 
+						await read_cookies(page);
+						// handle the home page click
+						await handle_home_page_click(page);
+						// get new opened page
+						page = ( await browser.pages() )[0];
+						// scarp the ids of the with company names
+						res = await scrap_files(page, name);
+						if(res) resolve(res);
+						else scrapingError++; // add error
+				}
+				// save the cookies
+				// let's close the browser
+				console.log('closing browser...')
+				await browser.close();
+				reject("too many errors");
+		});
+
 const handle_home_page_click = async page => {
 		let home_url = 'https://www.supercias.gob.ec/portalscvs/'
 		// go to initial login page 
@@ -41,30 +70,8 @@ const get_ids = () => {
 
 const extract_id = url => url.split("param=")[1]
 
-const check_integrity = (names, ids) => {
-		/* check if the name match the id or if the id are present */
-		let clean_ids = [].fill({}, 0, names.length);
-		let missing_ids = [];
-		const find_id = name => ids.filter( id => id.company === name )[0];
-		const check_id = id => {
-				if(!id) return false;
-				if(!id.url) return false;
-				if(id.url === home_page_url) return false;
-				if(!id.id) return false;
-				if( id.id !== extract_id(id.url) ) return false;
-				return true;
-		}
-		console.log("checking file integrity...");
-		names.forEach( ( name, index ) => {
-				let id = find_id(name);
-				if( id && check_id(id) ) clean_ids[index] = id;
-				else missing_ids.push(index)
-		})
-		return [ clean_ids, missing_ids ]
-}
-
 /* scraps a id from a single company name */
-const scrap_id = async (page, name, debug=false) => {
+const scrap_files = async (page, name, debug=false) => {
 		// for page to load
 		//console.log("getting radio element")
 		await waitUntilRequestDone(page, 1000)
@@ -82,15 +89,21 @@ const scrap_id = async (page, name, debug=false) => {
 		let search_button = ( await page.$x("//td[text()='Buscar']/../../..") )[0];
 		// type name of company
 		debuging && console.log("typing name")
-		await text_input.type(name, {delay: 1});
+		await text_input.type(name, {delay: 10});
+		await waitUntilRequestDone(page, 1000)
+		// get from options
+		await page.keyboard.press('ArrowLeft');
+		// remove suggestion
+		await page.keyboard.press('Enter');
 		// wait until for a little
 		await waitUntilRequestDone(page, 1000)
 		// click seach button
 		debuging && console.log("clicking search_button")
-		await search_button.click();
+		await search_button.click({delay: 1});
 		// wait until new page loads
 		debuging && console.log("waiting for new page to load")
 		await waitUntilRequestDone(page, 1000);
+		//await page.waitForTimeout(10000);
 		// get the url value 
 		let url = page.url();
 		// if  something whent wrong
@@ -121,7 +134,8 @@ const timeoutAfter = timeout => {
 const scrap_ids = async page => {
 		/* scrap ids */
 		let names = read_json('mined_data/company_names.json'),
-				timeout = 1000 * 100,
+				// 1000ms * 60s  * 2 =  2m
+				timeout = 1000 * 60 * 2, 
 				id;
 		// check the integriy of the id file
 		let [ ids, missing_ids ] = check_integrity( names, get_ids() );
@@ -133,7 +147,6 @@ const scrap_ids = async page => {
 		try{ // catch all
 				for (let i of missing_ids){
 						// scrap the id from name
-						//let timed_out_ID = null;
 						const id = await Promise.race([
 								scrap_id(page, names[i]),
 								timeoutAfter(timeout)
