@@ -216,6 +216,7 @@ class ProxyRotator {
 
 }
 
+/*
 const r = new ProxyRotator();
 
 let proxy = r.next()
@@ -232,7 +233,6 @@ r.setDead(proxy)
 console.log(proxy)
 r.setAlive(proxy)
 console.log(proxy)
-
-
+*/
 
 export { ProxyRotator, get_free_online_proxies, get_premium_proxies }
