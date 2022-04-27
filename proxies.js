@@ -86,34 +86,34 @@ const get_premium_proxies = () => {
 
 class ProxyRotator {
 		constructor(){
+				this.queue = []
+				this.dead = [];
+				// 1000ms * 60s * 60m = 1h
+				this.timeout_rate = 1000 * 60 * 60;
+				// get initial proxies
 				let initial_proxy_pool = [
 						...get_premium_proxies()
 				];
-				// 1000ms * 60s * 60m = 1h
-				this.timeout_rate = 1000 * 60 * 60;
-				this.alive = [];
-				this.dead = [];
-				this.unknown = [];
-				this.ui = 0;
-				this.ai = 0;
-				this.di = 0;
+				// add the new proxies to the queue
 				this.add_new_proxies(initial_proxy_pool);
 		}
 
 		find_proxy_by_str(str){
-				let proxy_pool = [ ...this.alive, ...this.dead, ...this.unknown ];
+				// look for a single proxy with the str
+				let proxy_pool = [ ...this.dead, ...this.queue ];
 				return proxy_pool.filter( proxy => str === proxy )[0];
 		}
 
 		remove_proxy_by_str(str){
-				this.alive = this.alive.filter( proxy => proxy.proxy !== str )
+				// remove proxy from any list it is in
+				this.queue = this.queue.filter( proxy => proxy.proxy !== str )
 				this.dead = this.dead.filter( proxy => proxy.proxy !== str )
-				this.unknown = this.unknown.filter( proxy => proxy.proxy !== str )
 		}
 
 		add_new_proxies(proxies){
+				// with a list of proxies, add them to the queue
 				proxies.forEach( proxy => 
-						this.unknown.push({
+						this.queue.push({
 								status:'unknown', 
 								timeoutID: null,
 								times_resurected: null,
@@ -126,26 +126,50 @@ class ProxyRotator {
 
 		str_param_decorator = func => 
 				function(proxy){
+						// if it is passed a str insted of obj, 
 						if( proxy instanceof String )
+								// ge the proxy obj
 								proxy = find_proxy_by_str( proxy );
-						return func(proxy)
+						return func( proxy )
 				}
 
 		async getOnlineFreeProxies() {
+				// scrap online free proxies
 				let new_proxies = await get_free_online_proxies();
 				this.add_new_proxies(new_proxies);
 		}
 
-		getNext = () => {
-				if(this.unknown.length === 0) return null
-				else if(this.ui <= this.unknown.length) this.ui = 0;
-				return this.unknown[this.ui++];
+		getProxy = () => {
+				if(this.queue.length === 0){
+						// there are not proxies
+						console.error("no proxies in queue");
+						return null ;
+				}
+				// remove from front 
+				let proxy = this.queue.shift();
+				// add to back
+				this.queue.push(proxy);
+				// return 
+				return  proxy
 		}
 
 		getAlive = () => {
-				if(this.alive.length === 0) return null
-				else if(this.ai <= this.alive.length) this.ai = 0;
-				return  this.alive[this.ai++];
+				if(this.queue.length === 0){
+						// there are not proxies
+						console.error("no proxies in queue");
+						return null ;
+				}
+				let proxy = null;
+				for(let i =0;i<this.queue.length;i++)
+						if( proxy[i].status === "Alive"){
+								// get first Alive proxy
+								proxy = this.queue.splice(i,1);
+								// add it to the end
+								this.queue.push(proxy);
+								// stop loop
+								i = this.queue.length;
+						}
+				return proxy;
 		}
 
 		setAlive = this.str_param_decorator( proxy =>  {
