@@ -1,13 +1,13 @@
 import { ProxyRotator } from './proxies.js'
 import { read_json, write_json } from './utils.js';
 
-
 class PromiseEngine {
 		constructor(concorrent_promises){
 				this.concorrent_promises = concorrent_promises;
 				this.stopFunction = this.stopFunction;
 				this.halt = false;
 				this.promises = Array(concorrent_promises).fill(null);
+				this.nextPromise = null;
 				this.promiseArray = null;
 				this.promiseGen = null;
 				this.stopFunction = null;
@@ -17,18 +17,13 @@ class PromiseEngine {
 		}
 
 		// setters
-		setStopFunction = stopFunction =>
-				this.stopFunction = stopFunction 
-		setPromiseList =  promiseArray  => 
-				this.promiseArray = promiseArray;
-		setPromiseGen =  promiseGen  => 
-				this.promiseGen = promiseGen;
-		whenFulfilled = fulfillmentCB => 
-				this.fulfillment = fulfillmentCB
-		whenRejected = rejectionCB => 
-				this.rejectionCB = rejectionCB
-		whenResolved = resolvedCB => 
-				this.resolvedCB = resolvedCB
+		setStopFunction = stopFunction => this.stopFunction = stopFunction 
+		setNextPromise =  nextPromise  => this.nextPromise = nextPromise;
+		setPromiseList =  promiseArray  => this.promiseArray = promiseArray;
+		setPromiseGen =  promiseGen  => this.promiseGen = promiseGen;
+		whenFulfilled = fulfillmentCB => this.fulfillment = fulfillmentCB
+		whenRejected = rejectionCB => this.rejectionCB = rejectionCB
+		whenResolved = resolvedCB => this.resolvedCB = resolvedCB
 
 		_getNewPromise(){
 				let newPromise = null;
@@ -38,8 +33,15 @@ class PromiseEngine {
 								throw  new Error('list has no more values')
 						}else 
 								newPromise = this.promiseArray.shift();
+				}else if(this.nextPromise){
+						let next = this.nextPromise();
+						if(!next){
+								this.halt = true;
+								throw new Error(' nex promise function gave null value')
+						}else 
+								newPromise = next
 				}else if(this.promiseGen){
-						let next =  this.promiseGen.next();
+						let next = this.promiseGen.next();
 						if(next.done){
 								this.halt = true;
 								throw new Error('promise generator reached it end')
@@ -80,7 +82,7 @@ class PromiseEngine {
 				//if no stop function as been set run forever 
 				if(this.stopFunction === null) this.stopFunction = () => false;
 				// start the loop
-				while( !this.halt){
+				while( !this.halt ){
 						// check all processes
 						await Promise.allSettled( this.promises )
 								.then(() => { 
@@ -122,7 +124,6 @@ class PromiseEngine {
 										}catch(e){
 												console.error(e);
 												this.halt = true;
-												return null;
 										}
 								})
 				}
@@ -138,6 +139,7 @@ async function main(){
 				let timeout_base = 1000
 				let name = names[missing_index];
 				let index = missing_index;
+				console.log( { name, index, proxy, retries, } )
 				return new Promise( async ( resolve, reject ) => {
 						// make promise
 						console.log(`created Promise ${name}`);
@@ -183,12 +185,6 @@ async function main(){
 		// saved checked list
 		save_checklist(checklist);
 
-		function* processGen(){
-				/* generate new processes */
-				if( missing_indexes.length <= 0 ) return null;
-				else yield create_timeout_process(names, missing_indexes.shift(), proxy_r.next())
-		}
-
 		const isResolved_callback = result => 
 				console.log(`promise: ${result.name} it is resolved`);
 		
@@ -209,7 +205,7 @@ async function main(){
 		}
 
 		const stopFunction = () => {
-				if(missing_indexes.length > 0) return false
+				if(missing_indexes.length === 0) return false
 				else return true
 		}
 
@@ -225,9 +221,12 @@ async function main(){
 				save_checklist(checklist);
 		}
 
-		let gen = processGen();
+		//let gen = processGen();
 		// set promise generator
-		engine.setPromiseGen(gen);
+		//engine.setPromiseGen(gen);
+		engine.setNextPromise(
+				() => create_timeout_process(names, result.index, proxy_r.next())
+		);
 		//set stop function
 		engine.setStopFunction(stopFunction);
 		// set call backs 
@@ -235,11 +234,11 @@ async function main(){
 		engine.whenFulfilled(isFulfilled_callback);
 		engine.whenResolved(isResolved_callback);
 		// start
-		await engine.start();
-		//console.log(gen.next())
-		//console.log(gen.next())
-		//console.log(gen.next())
-		//console.log(gen.next())
+		//await engine.start();
+		console.log(gen.next())
+		console.log(gen.next())
+		console.log(gen.next())
+		console.log(gen.next())
 }
 
 
