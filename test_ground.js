@@ -84,6 +84,7 @@ class PromiseEngine {
 						// check all processes
 						await Promise.allSettled( this.promises )
 								.then(() => { 
+										console.log('looping inside promise', this.halt);
 										try{ // if all all have settled
 												// if there is no process active
 												for( let i = 0; i < this.promises.length; i++ ){
@@ -115,6 +116,8 @@ class PromiseEngine {
 																else // get new one
 																		this.promises[i] = this._promiseMonitor( this._getNewPromise() );
 														}
+														// run stop function
+														this.halt = this.stopFunction();
 												}
 										}catch(e){
 												console.error(e);
@@ -122,8 +125,6 @@ class PromiseEngine {
 												return null;
 										}
 								})
-						// run stop function
-						//if(this.stopFunction()) this.halt = true; 
 				}
 		}
 }
