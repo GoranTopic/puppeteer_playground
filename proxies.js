@@ -194,7 +194,6 @@ class ProxyRotator {
 		})
 
 		setDead = this.str_param_decorator( proxy =>  {
-				console.log(proxy);
 				this.remove_proxy_from_queue(proxy.proxy);
 				proxy.status = 'Dead';
 				if(proxy.timeoutID){
