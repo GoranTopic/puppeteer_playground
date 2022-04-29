@@ -56,24 +56,27 @@ class PromiseEngine {
 				/* promise wrapper for promise, a promise condom, if you will... */
 				// Don't create a wrapper for promises that can already be queried.
 				if (promise.isResolved) return promise;
-				var isResolved = false;
+				var isResolved = false
+				var isFulfilled = false;
 				var isRejected = false;
 				var value = null;
 				// Observe the promise, saving the fulfillment in a closure scope.
 				var result = promise.then(
-						function(v) { isResolved = true; value = v; return v; }, 
-						function(e) { isRejected = true; throw e; }
+						function(v) { isFulfilled = true; value = v; return v; }, 
+						function(e) { isRejected = true; value = e; throw e; }
 				);
 				// getters
 				result.getValue = function() { return value };
-				result.isFulfilled = function() { return isResolved || isRejected; };
-				result.isResolved = function() { return isResolved; }
+				result.isResolved = function() { return isFulfilled || isRejected; };
+				result.isFulfilled = function() { return isFulfilled; }
 				result.isRejected = function() { return isRejected; }
 				return result;
 		}
 
 		async start(){
 				let result;
+				let loop_max  = 10;
+				let loop_num = 0;
 				// promises container
 				this.promises = Array(this.concorrent_promises).fill(null);
 				// create promises
@@ -86,40 +89,52 @@ class PromiseEngine {
 						// check all processes
 						await Promise.allSettled( this.promises )
 								.then(() => { 
-										console.log('looping inside promise', this.halt);
+										//console.log('looping inside promise', this.halt);
 										try{ // if all all have settled
 												// if there is no process active
 												for( let i = 0; i < this.promises.length; i++ ){
 														// for every every processes
 														if(this.promises[i].isResolved()){
+																console.log("it was resolved");
 																// set new promise to none
 																let newPromise = null;
 																// if the promise has been resolved
-																if(this.resolvedCB) //if ther is a reolve cb
-																		// run it
+																if(this.resolvedCB) //if ther is a reolve cb run it
 																		newPromise = this.resolvedCB( this.promises[i].getValue() ); 
 																// add it as a new promise
 																// if promise if rejected
 																if(this.promises[i].isRejected()){
 																		// if there was an error
 																		if(this.rejectionCB) 
+																				console.log('promis failed');
 																				// if a new promise has been returned
 																				newPromise = this.rejectionCB( this.promises[i].getValue() );
 																		// if it was successfull
 																}else if(this.promises[i].isFulfilled()){
+																		console.log('promise fufilled');
 																		if(this.fulfillmentCB)
-																				// if a new promise has been returned
-																				newPromise = this.fulfillmentCB( this.promises[i].getValue() );
+																		// if a new promise has been returned
+																		newPromise = this.fulfillmentCB( this.promises[i].getValue() );
 																}
 																// if no new promise has been set 
-																if(this.stopFunction()) return // check stop function
 																if(newPromise) // if new promise has been passed
 																		this.promises[i] = this._promiseMonitor(newPromise);
 																else // get new one
 																		this.promises[i] = this._promiseMonitor( this._getNewPromise() );
 														}
 														// run stop function
+														console.log("startof loop")
+														console.log(this.halt);
 														this.halt = this.stopFunction();
+														console.log(this.halt);
+														console.log(this.promises);
+														console.log(this.promises[i].isResolved())
+														console.log(this.promises.every( p => p.isResolved() ) )
+														if(this.promises.every( p => p.isResolved() ) ){
+																console.log(this.promises);
+																this.halt = true
+														}
+														if(loop_num ++ > loop_max) this.halt = true;
 												}
 										}catch(e){
 												console.error(e);
@@ -139,7 +154,7 @@ async function main(){
 				let timeout_base = 1000
 				let name = names[missing_index];
 				let index = missing_index;
-				console.log( { name, index, proxy, retries, } )
+				//console.log( 'created proomise:', { name, index, proxy, retries, } )
 				return new Promise( async ( resolve, reject ) => {
 						// make promise
 						console.log(`created Promise ${name}`);
@@ -191,7 +206,7 @@ async function main(){
 
 		const isRejected_callback = result => {
 				// if there was an error
-				console.error("isRejected", result.error);
+				console.error("isRejected:", result.error);
 				// set proxy as dead
 				proxy_r.setDead(result.proxy);
 				// if there have been many tries before
@@ -205,8 +220,8 @@ async function main(){
 		}
 
 		const stopFunction = () => {
-				if(missing_indexes.length === 0) return false
-				else return true
+				if(missing_indexes.length === 0) return true
+				else return false
 		}
 
 		const isFulfilled_callback = result => {
@@ -225,7 +240,7 @@ async function main(){
 		// set promise generator
 		//engine.setPromiseGen(gen);
 		engine.setNextPromise(
-				() => create_timeout_process(names, result.index, proxy_r.next())
+				() => create_timeout_process(names, missing_indexes.shift(), proxy_r.next())
 		);
 		//set stop function
 		engine.setStopFunction(stopFunction);
@@ -234,11 +249,7 @@ async function main(){
 		engine.whenFulfilled(isFulfilled_callback);
 		engine.whenResolved(isResolved_callback);
 		// start
-		//await engine.start();
-		console.log(gen.next())
-		console.log(gen.next())
-		console.log(gen.next())
-		console.log(gen.next())
+		await engine.start();
 }
 
 
