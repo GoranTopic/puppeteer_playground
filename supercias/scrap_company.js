@@ -1,33 +1,63 @@
 import waitUntilRequestDone from '../waitForNetworkIdle.js'
-import { getText, read_json, write_json, save_cookies, read_cookies, } from '../utils.js'
-import { consulta_principal_url, home_page_url } from '../urls.js';
 import debuging from '../options/debug.js'
+import { home_page_url, 
+		isAtHomePage, 
+		isAtConsultaPrincipal,
+		isAtCompanyDocumentsPage
+} from '../urls.js';
+import { getText, 
+		read_json, 
+		write_json, 
+		save_cookies, 
+		read_cookies, 
+} from '../utils.js'
 
-const scrap_company = ( browser, name, id_num) => 
+const scrap_company = ( browser, name ) => 
 		new Promise( async (resolve, reject) => {
 				console.log('name:', name)
-				/* replace non breaking paces in scraped names */
-				let scrapingError = 0,
-						max_errors = 5,
-						res
-				// read the cookies 
-				// await read_cookies(page);
-				// handle the home page click
-				await handle_home_page_click(browser);
-				// scarp the ids of the with company names
-				await handle_name_input(browser, name, true);
-				// handle documents page
-				res = await scrap_documents(browser, true);
-				// if we got to get al the files
-				if(res) resolve(res);
-				else scrapingError++; // add error
-				//}
-				// save the cookies
+				const maximum_tries = 1;
+				let tries = 0
+				let res;
+				while(tries < maximum_tries){
+						try{ 
+								console.log("trying again");
+								// handle the home page
+								await home_page_state(browser);
+								// scarp the ids of the with company names
+								await input_name_state(browser, name, debuging);
+								// handle documents page
+								res = await company_documents_state(browser, debuging);
+								// if we got to get all the files
+								if(res) resolve(res);
+								else tries++; // add erro
+						}catch(e){
+								// add tries
+								tries++;
+								// pinr error
+								console.error(`caught error: ${e} with ${tries} tries`);
+								// if there is a page
+								if( await browser.pages() ){
+										// get page
+										let page = (await browser.pages())[0];
+										// wait is there is trafic
+										await waitUntilRequestDone(page, 500)
+										// wait for some secs
+										await page.mainFrame().waitForTimeout(500)
+								}
+						}
+				} // we did not resolve
+				console.log(`Errored out with ${tries} tries`);
 				// let's close the browser
 				console.log('closing browser...')
-				//await browser.close();
-				reject("too many errors");
+				// await browser.close();
+				reject( { name, error: "too many tries", } )
 		});
+
+const make_state = (condition, script) => 
+		async (browser, name, debuging) => { 
+				if(await condition(browser, debuging)) 
+						await script(browser, name, debuging) 
+		}
 
 // setters and getting for saving the ids
 const ids_output_file = 'mined_data/company_ids.json';
@@ -44,12 +74,12 @@ const save_id = id => {
 // extract id
 const extract_id = url => url.split("param=")[1]
 
-const handle_home_page_click = async browser => {
-		let home_url = 'https://www.supercias.gob.ec/portalscvs/'
+// script to handle the home page
+const home_page_click_script = async browser => {
 		//get page 
 		let page = ( await browser.pages() )[0];
 		// go to initial login page 
-		await page.goto( home_url, // wait until the page is fully loaded
+		await page.goto( home_page_url, // wait until the page is fully loaded
 				{ waitUntil: 'networkidle0', }
 		);
 		// get frame 
@@ -62,27 +92,39 @@ const handle_home_page_click = async browser => {
 		//console.log('popup_cancel', popup_cancel);
 		//if(popup_cancel) await popup_cancel.click();
 		// selecte button
-		const button = await frame.waitForXPath('//span[text()="CONSULTA DE COMPAÑÍAS"]');
+		const button = 
+				await frame.waitForXPath('//span[text()="CONSULTA DE COMPAÑÍAS"]');
 		// click on button to go to company consulatas
 		await button.click();
 		// select button
 		// wait until request is rendered
-		await waitUntilRequestDone(page, 500)
+		await waitUntilRequestDone(page, 1000)
 		// wait for a while
-		while( (await browser.pages()).length  <= 1 )
-				await page.mainFrame().waitForTimeout(100)
+		if( (await browser.pages()).length  <= 1 )
+				throw new Error('new page did not open')
 		// close page after being done
 		await page.close()
 }
+// make home page condition
+const home_page_condition = async browser => 
+		// if it dow not have a page yet, and it is at null url
+		( await browser.pages() ).length === 1 &&
+				(( await browser.pages() )[0].url)
+// mae home handle state
+const home_page_state =  make_state( 
+		home_page_condition,
+		home_page_click_script
+)
 
 /* scraps a id from a single company name */
-const handle_name_input = async (browser, name, debug=false) => {
+const input_name_script = async (browser, name, debug=false) => {
 		// for page to load
 		let page = ( await browser.pages() )[0];
 		//console.log("getting radio element")
 		await waitUntilRequestDone(page, 2000)
 		// get the radion 
-		let radio_el = await page.waitForXPath('//label[text()="Nombre"]/../input');
+		let radio_el = 
+				await page.waitForXPath('//label[text()="Nombre"]/../input');
 		// click on the name radio
 		if(radio_el) await radio_el.click();
 		else throw new Error('could not radion element')
@@ -90,10 +132,14 @@ const handle_name_input = async (browser, name, debug=false) => {
 		debuging && console.log("getting text input")
 		await waitUntilRequestDone(page, 1000)
 		// get the main text input
-		let text_input = ( await page.$x("//span[text()='Parámetro']/../i/input") )[0];
+		let text_input = ( 
+				await page.$x("//span[text()='Parámetro']/../i/input")
+		)[0];
 		// get button element  
 		debuging && console.log("getting search button")
-		let search_button = ( await page.$x("//td[text()='Buscar']/../../..") )[0];
+		let search_button = (
+				await page.$x("//td[text()='Buscar']/../../..")
+		)[0];
 		// type name of company
 		debuging && console.log("typing name")
 		await text_input.type(name, {delay: 10});
@@ -119,7 +165,8 @@ const handle_name_input = async (browser, name, debug=false) => {
 		save_id({ company: name, id, url });
 		// wait until page loads
 		debuging && console.log("clicking on documents online")
-		let document_button = ( await page.$x('//span[text()="Documentos Online"]/../..'))[0];
+		let document_button =
+				( await page.$x('//span[text()="Documentos Online"]/../..'))[0];
 		// click the document
 		await document_button.click();
 		// wait for a while
@@ -130,21 +177,30 @@ const handle_name_input = async (browser, name, debug=false) => {
 		// close page after being done
 		await page.close()
 }
-
+// condition for entering input name state
+const input_name_condition = async browser => 
+		// if it dow not have a page yet, and the page is at consulta principal
+		( await browser.pages() ).length === 1 &&
+				isAtConsultaPrincipal(( await browser.pages() )[0])
+// make state
+const input_name_state = make_state( 
+		input_name_condition,
+		input_name_script
+)
 /* scrap the documents */
-const scrap_documents = async (browser, debuging=false) => {
+const company_documents_script = async (browser, debuging=false) => {
 		// get page
 		//let page = ( await browser.pages() )[0];
 		// wait until request is rendered
-		//await waitUntilRequestDone(page, 100)
+		await waitUntilRequestDone(page, 100)
 		// all get economic documents
 		await scrap_economic_documents(browser, debuging);
 		// wait
-		await page.mainFrame().waitForTimeout(30000)
+		//await page.mainFrame().waitForTimeout(30000)
 
-		return { res: true }
+		//return { res: true }
 	}
-
+//hande the economic tab
 const scrap_economic_documents = async (browser, debugging=false) => {
 		let page = ( await browser.pages() )[0];
 		if(page) console.log('got page in scrap_economic_documents')
@@ -153,7 +209,8 @@ const scrap_economic_documents = async (browser, debugging=false) => {
 		// wai until page is done
 		await waitUntilRequestDone(page, 1500)
 		// get economic tabs 
-		//let economic_tab = ( await page.$x('//span[text()="Documentos Económicos"]/../../../..'))[0];
+		//let economic_tab = 
+		//( await page.$x('//span[text()="Documentos Económicos"]/../../../..'))[0];
 		// select economic tab
 		//await economic_tab.click()
 		// get table 
@@ -163,7 +220,6 @@ const scrap_economic_documents = async (browser, debugging=false) => {
 				...( await tableBox.$x('//tr[@class="z-listitem"]') ),
 				...( await tableBox.$x('//tr[@class="z-listitem z-listbox-odd"]') ) 
 		]
-		
 		if(items.length > 1){ 
 				// if there is at least one element
 				let elements = await items[0].$x('//td[@class="z-listcell"]');
@@ -175,13 +231,12 @@ const scrap_economic_documents = async (browser, debugging=false) => {
 				await waitUntilRequestDone(page, 1000)
 				await doc['button'].click()
 				// wait until new page is open
-				while( (await browser.pages()).length === 1 ) 
+				if( (await browser.pages()).length === 1 ) 
 						await page.mainFrame().waitForTimeout(100)
 				// switch tabs 
 				//console.log(await browser.pages())
 				page = (await browser.pages())[1];
 				//console.log(page)
-				
 				await handle_id_input(page);
 		}
 
@@ -201,11 +256,12 @@ const scrap_economic_documents = async (browser, debugging=false) => {
 		*/
 		
 }
-
+// handle the ecuadorian id input
 const handle_id_input = async (page, debuging) => {
 		await waitUntilRequestDone(page, 1000)
 		// handeling the inputting of id
-		let ecuadorian_radio = await page.waitForXPath('//input[@type="radio"]');
+		let ecuadorian_radio =
+				await page.waitForXPath('//input[@type="radio"]');
 		if(ecuadorian_radio){ 
 				console.log("got ecuadorian radio")
 				ecuadorian_radio.click()
@@ -219,11 +275,21 @@ const handle_id_input = async (page, debuging) => {
 		let submit_button = ( await page.$x('//span[@class="z-button"]') )[0];
 		submit_button.click();
 }
-
+// condition
+const company_documents_condition = async browser => 
+		// if it dow not have a page yet,
+		// and the page is at compnay documents page
+		( await browser.pages() ).length === 1 &&
+				isAtCompanyDocumentsPage(( await browser.pages() )[0])
+// state 
+const company_documents_state = make_state( 
+		company_documents_condition,
+		company_documents_script
+)
 
 const timeoutAfter = timeout => {
   return new Promise((resolve, reject) => {
-		setTimeout(() => reject(`${timeout}ms timer timed out`), timeout);
+		setTimeout(() => reject(`timed out after ${timeout}ms`), timeout);
   });
 };
 
