@@ -235,4 +235,4 @@ r.setAlive(proxy)
 console.log(proxy)
 */
 
-export { ProxyRotator, get_free_online_proxies, get_premium_proxies }
+export { ProxyRotator, testProxies, get_free_online_proxies, get_premium_proxies }

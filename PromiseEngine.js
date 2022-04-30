@@ -9,6 +9,7 @@ export default class PromiseEngine {
 				this.promiseArray = null;
 				this.promiseGen = null;
 				this.stopFunction = null;
+				this.timeout = null;
 				this.fulfillmentCB = null;
 				this.rejectionCB = null;
 				this.resolvedCB = null;
@@ -19,14 +20,16 @@ export default class PromiseEngine {
 		setNextPromise =  nextPromise  => this.nextPromise = nextPromise;
 		setPromiseList =  promiseArray  => this.promiseArray = promiseArray;
 		setPromiseGen =  promiseGen  => this.promiseGen = promiseGen;
+		setTimeout =  timeout  => this.timeout = timeout;
 		whenFulfilled = fulfillmentCB => this.fulfillmentCB = fulfillmentCB
 		whenRejected = rejectionCB => this.rejectionCB = rejectionCB
 		whenResolved = resolvedCB => this.resolvedCB = resolvedCB
 
+
 		_getNewPromise(){
 				let newPromise = null;
 				if(this.promiseArray){
-						if(this.promiseArray.length === 0.){
+						if(this.promiseArray.length === 0){
 								this.halt = true;
 								throw  new Error('list has no more values')
 						}else 
@@ -50,6 +53,11 @@ export default class PromiseEngine {
 				else return newPromise;
 		}
 		
+		_timeoutAfter = timeout => 
+				new Promise((resolve, reject) => {
+						setTimeout(() => reject(new Error(`timed out`)), timeout);
+				})
+
 		_promiseMonitor(promise) {
 				/* promise wrapper for promise, a promise condom, if you will... */
 				// Don't create a wrapper for promises that can already be queried.
@@ -58,23 +66,30 @@ export default class PromiseEngine {
 				var isFulfilled = false;
 				var isRejected = false;
 				var value = null;
+				var result;
+				// if it has timeout
+				if(this.timeout){ 
+						var promises = [ promise, this._timeoutAfter(this.timeout) ]
+						result = Promise.race(promises)
+				}else
+						result = promise
+
 				// Observe the promise, saving the fulfillment in a closure scope.
-				var result = promise.then(
+				result.then(
 						function(v) { isFulfilled = true; value = v; return v; }, 
 						function(e) { isRejected = true; value = e; throw e; }
-				);
+				) 
 				// getters
-				result.getValue = function() { return value };
-				result.isResolved = function() { return isFulfilled || isRejected; };
-				result.isFulfilled = function() { return isFulfilled; }
-				result.isRejected = function() { return isRejected; }
+				result.getValue    = function() { return value };
+				result.isResolved  = function() { return isFulfilled || isRejected };
+				result.isFulfilled = function() { return isFulfilled };
+				result.isRejected  = function() { return isRejected };
 				return result;
 		}
 
+
 		async start(){
 				let result;
-				let loop_max  = 10;
-				let loop_num = 0;
 				// promises container
 				this.promises = Array(this.concorrent_promises).fill(null);
 				// create promises

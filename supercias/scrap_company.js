@@ -3,37 +3,51 @@ import { getText, read_json, write_json, save_cookies, read_cookies, } from '../
 import { consulta_principal_url, home_page_url } from '../urls.js';
 import debuging from '../options/debug.js'
 
-const scrap_company = async ( browser, name ) => 
-		new Promise( (resolve, reject) => {
+const scrap_company = ( browser, name, id_num) => 
+		new Promise( async (resolve, reject) => {
+				console.log('name:', name)
 				/* replace non breaking paces in scraped names */
 				let scrapingError = 0,
 						max_errors = 5,
-						page,
 						res
-				// get already opend page
-				page = ( await browser.pages() )[0];
-				// start scraping
-				while(scrapingError < max_errors){
-						// read the cookies 
-						await read_cookies(page);
-						// handle the home page click
-						await handle_home_page_click(page);
-						// get new opened page
-						page = ( await browser.pages() )[0];
-						// scarp the ids of the with company names
-						res = await scrap_files(page, name);
-						if(res) resolve(res);
-						else scrapingError++; // add error
-				}
+				// read the cookies 
+				// await read_cookies(page);
+				// handle the home page click
+				await handle_home_page_click(browser);
+				// scarp the ids of the with company names
+				await handle_name_input(browser, name, true);
+				// handle documents page
+				res = await scrap_documents(browser, true);
+				// if we got to get al the files
+				if(res) resolve(res);
+				else scrapingError++; // add error
+				//}
 				// save the cookies
 				// let's close the browser
 				console.log('closing browser...')
-				await browser.close();
+				//await browser.close();
 				reject("too many errors");
 		});
 
-const handle_home_page_click = async page => {
+// setters and getting for saving the ids
+const ids_output_file = 'mined_data/company_ids.json';
+const save_ids = ids => write_json(ids, ids_output_file);
+const get_ids = () => {
+		let res =  read_json(ids_output_file);
+		return res? res : [];
+}
+const ids = get_ids();
+const save_id = id => {
+		ids.push(id);
+		save_ids(ids);
+}
+// extract id
+const extract_id = url => url.split("param=")[1]
+
+const handle_home_page_click = async browser => {
 		let home_url = 'https://www.supercias.gob.ec/portalscvs/'
+		//get page 
+		let page = ( await browser.pages() )[0];
 		// go to initial login page 
 		await page.goto( home_url, // wait until the page is fully loaded
 				{ waitUntil: 'networkidle0', }
@@ -50,35 +64,28 @@ const handle_home_page_click = async page => {
 		// selecte button
 		const button = await frame.waitForXPath('//span[text()="CONSULTA DE COMPAÑÍAS"]');
 		// click on button to go to company consulatas
-		button.click();
+		await button.click();
 		// select button
 		// wait until request is rendered
 		await waitUntilRequestDone(page, 500)
 		// wait for a while
-		await page.mainFrame().waitForTimeout(1000)
+		while( (await browser.pages()).length  <= 1 )
+				await page.mainFrame().waitForTimeout(100)
 		// close page after being done
 		await page.close()
 }
 
-// setters and getting for saving the ids
-const ids_output_file = 'mined_data/company_ids.json';
-const save_ids = ids => write_json(ids, ids_output_file);
-const get_ids = () => {
-		let res =  read_json(ids_output_file);
-		return res? res : [];
-}
-
-const extract_id = url => url.split("param=")[1]
-
 /* scraps a id from a single company name */
-const scrap_files = async (page, name, debug=false) => {
+const handle_name_input = async (browser, name, debug=false) => {
 		// for page to load
+		let page = ( await browser.pages() )[0];
 		//console.log("getting radio element")
-		await waitUntilRequestDone(page, 1000)
+		await waitUntilRequestDone(page, 2000)
 		// get the radion 
-		let radio_el = ( await page.$x('//label[text()="Nombre"]/../input') )[0];
+		let radio_el = await page.waitForXPath('//label[text()="Nombre"]/../input');
 		// click on the name radio
-		if (radio_el) await radio_el.click();
+		if(radio_el) await radio_el.click();
+		else throw new Error('could not radion element')
 		// until it loads the name
 		debuging && console.log("getting text input")
 		await waitUntilRequestDone(page, 1000)
@@ -103,27 +110,116 @@ const scrap_files = async (page, name, debug=false) => {
 		// wait until new page loads
 		debuging && console.log("waiting for new page to load")
 		await waitUntilRequestDone(page, 1000);
-		//await page.waitForTimeout(10000);
 		// get the url value 
 		let url = page.url();
-		// if  something whent wrong
-		if( !url || url === home_page_url ) 
-				throw "Could not get url"
 		// get ids 
 		let id = extract_id(url);
 		if( !id ) throw "Could not get id"
-		// get back button 
-		debuging && console.log("getting back button")
-		let backButton = ( await page.$x('//span[@class="z-button"]'))[0];
-		// go back
-		debuging && console.log("clicking back button")
-		await backButton.click();
+		// save id
+		save_id({ company: name, id, url });
 		// wait until page loads
-		debuging && console.log("waiting for new page to load")
-		await waitUntilRequestDone(page, 1000);
-		// return scraped id
-		return { company: name, id, url };
+		debuging && console.log("clicking on documents online")
+		let document_button = ( await page.$x('//span[text()="Documentos Online"]/../..'))[0];
+		// click the document
+		await document_button.click();
+		// wait for a while
+		await waitUntilRequestDone(page, 2000)
+		// wait until request is rendered
+		while( (await browser.pages()).length  <= 1 )
+				await page.mainFrame().waitForTimeout(100)
+		// close page after being done
+		await page.close()
 }
+
+/* scrap the documents */
+const scrap_documents = async (browser, debuging=false) => {
+		// get page
+		//let page = ( await browser.pages() )[0];
+		// wait until request is rendered
+		//await waitUntilRequestDone(page, 100)
+		// all get economic documents
+		await scrap_economic_documents(browser, debuging);
+		// wait
+		await page.mainFrame().waitForTimeout(30000)
+
+		return { res: true }
+	}
+
+const scrap_economic_documents = async (browser, debugging=false) => {
+		let page = ( await browser.pages() )[0];
+		if(page) console.log('got page in scrap_economic_documents')
+		// get page
+		let doc = {}; 
+		// wai until page is done
+		await waitUntilRequestDone(page, 1500)
+		// get economic tabs 
+		//let economic_tab = ( await page.$x('//span[text()="Documentos Económicos"]/../../../..'))[0];
+		// select economic tab
+		//await economic_tab.click()
+		// get table 
+		let tableBox = ( await page.$x('//div[@class="z-tabbox"]'))[0];
+		// get all items
+		let items = [ 
+				...( await tableBox.$x('//tr[@class="z-listitem"]') ),
+				...( await tableBox.$x('//tr[@class="z-listitem z-listbox-odd"]') ) 
+		]
+		
+		if(items.length > 1){ 
+				// if there is at least one element
+				let elements = await items[0].$x('//td[@class="z-listcell"]');
+				doc['expedient'] = await getText(elements[0])
+				doc['description'] = await getText(elements[1])
+				doc['date'] = await getText(elements[2])
+				doc['button'] = elements[3]
+				// click on document download
+				await waitUntilRequestDone(page, 1000)
+				await doc['button'].click()
+				// wait until new page is open
+				while( (await browser.pages()).length === 1 ) 
+						await page.mainFrame().waitForTimeout(100)
+				// switch tabs 
+				//console.log(await browser.pages())
+				page = (await browser.pages())[1];
+				//console.log(page)
+				
+				await handle_id_input(page);
+		}
+
+		/*
+		for( let item of items ){
+				let elements = await item.$x('//td[@class="z-listcell"]');
+				doc['expedient'] = await getText(elements[0])
+				doc['description'] = await getText(elements[1])
+				doc['date'] = await getText(elements[2])
+				doc['button'] = elements[3]
+//let doc_buttton = ( await item.$x('//td[@class="z-listcell"][4]'))[0];
+				console.log('doc:', doc );
+//await doc_buttton.click()
+				await waitUntilRequestDone(page, 1000)
+				await doc['button'].click()
+		}
+		*/
+		
+}
+
+const handle_id_input = async (page, debuging) => {
+		await waitUntilRequestDone(page, 1000)
+		// handeling the inputting of id
+		let ecuadorian_radio = await page.waitForXPath('//input[@type="radio"]');
+		if(ecuadorian_radio){ 
+				console.log("got ecuadorian radio")
+				ecuadorian_radio.click()
+		}
+		await page.mainFrame().waitForTimeout(1000)
+		// type the id
+		let id_input = ( await page.$x('//input[@type="text"]') )[0];
+		await id_input.type("0916576796", {delay: 10} )
+		// press search 
+		await page.mainFrame().waitForTimeout(1000)
+		let submit_button = ( await page.$x('//span[@class="z-button"]') )[0];
+		submit_button.click();
+}
+
 
 const timeoutAfter = timeout => {
   return new Promise((resolve, reject) => {
@@ -131,40 +227,4 @@ const timeoutAfter = timeout => {
   });
 };
 
-const scrap_ids = async page => {
-		/* scrap ids */
-		let names = read_json('mined_data/company_names.json'),
-				// 1000ms * 60s  * 2 =  2m
-				timeout = 1000 * 60 * 2, 
-				id;
-		// check the integriy of the id file
-		let [ ids, missing_ids ] = check_integrity( names, get_ids() );
-		console.log(missing_ids);
-		console.log(`missing ${missing_ids.length} out of ${names.length} names`)
-		// saved checked ids 
-		save_ids( ids );
-		// for every company names
-		try{ // catch all
-				for (let i of missing_ids){
-						// scrap the id from name
-						const id = await Promise.race([
-								scrap_id(page, names[i]),
-								timeoutAfter(timeout)
-						]);
-						// add  id to list
-						ids[i] = id;
-						// save colected ids
-						save_ids(ids);
-						// print result
-						console.log(`${id.company}\n> ${id.id}`);
-						console.log(`${i}/${missing_ids.length} missing\n`);
-				}
-		}catch(e){
-				console.error("Something went wrong!", e);
-				return false
-		}
-		conosle.log("done!")
-		return true
-}
-
-export { scrap_ids, handle_home_page_click }
+export { scrap_company }
