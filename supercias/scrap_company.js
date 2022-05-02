@@ -1,32 +1,35 @@
 import waitUntilRequestDone from '../waitForNetworkIdle.js'
-import debuging from '../options/debug.js'
-import { home_page_url, 
+import debugging from '../options/debug.js'
+import {
+		home_page_url, 
+		base_url_download,
 		isAtHomePage, 
 		isAtConsultaPrincipal,
 		isAtCompanyDocumentsPage
 } from '../urls.js';
-import { getText, 
+import {
+		getText, 
 		read_json, 
 		write_json, 
 		save_cookies, 
 		read_cookies, 
 } from '../utils.js'
+import fs from 'fs'
 
 const scrap_company = ( browser, name ) => 
 		new Promise( async (resolve, reject) => {
 				console.log('name:', name)
-				const maximum_tries = 1;
+				const maximum_tries = 2;
 				let tries = 0
 				let res;
 				while(tries < maximum_tries){
 						try{ 
-								console.log("trying again");
 								// handle the home page
 								await home_page_state(browser);
 								// scarp the ids of the with company names
-								await input_name_state(browser, name, debuging);
+								await input_name_state(browser, name);
 								// handle documents page
-								res = await company_documents_state(browser, debuging);
+								res = await company_documents_state(browser);
 								// if we got to get all the files
 								if(res) resolve(res);
 								else tries++; // add erro
@@ -34,7 +37,10 @@ const scrap_company = ( browser, name ) =>
 								// add tries
 								tries++;
 								// pinr error
-								console.error(`caught error: ${e} with ${tries} tries`);
+								console.error(`caught error with ${tries} tries`);
+								console.error(e);
+								if(tries < maximum_tries) 
+										console.log("trying again...");
 								// if there is a page
 								if( await browser.pages() ){
 										// get page
@@ -110,7 +116,7 @@ const home_page_condition = async browser =>
 		// if it dow not have a page yet, and it is at null url
 		( await browser.pages() ).length === 1 &&
 				(( await browser.pages() )[0].url)
-// mae home handle state
+// make home handle state
 const home_page_state =  make_state( 
 		home_page_condition,
 		home_page_click_script
@@ -119,7 +125,7 @@ const home_page_state =  make_state(
 /* scraps a id from a single company name */
 const input_name_script = async (browser, name, debug=false) => {
 		// for page to load
-		let page = ( await browser.pages() )[0];
+		let [ page ] = await browser.pages();
 		//console.log("getting radio element")
 		await waitUntilRequestDone(page, 2000)
 		// get the radion 
@@ -129,19 +135,19 @@ const input_name_script = async (browser, name, debug=false) => {
 		if(radio_el) await radio_el.click();
 		else throw new Error('could not radion element')
 		// until it loads the name
-		debuging && console.log("getting text input")
+		debugging && console.log("getting text input")
 		await waitUntilRequestDone(page, 1000)
 		// get the main text input
 		let text_input = ( 
 				await page.$x("//span[text()='Parámetro']/../i/input")
 		)[0];
 		// get button element  
-		debuging && console.log("getting search button")
+		debugging && console.log("getting search button")
 		let search_button = (
 				await page.$x("//td[text()='Buscar']/../../..")
 		)[0];
 		// type name of company
-		debuging && console.log("typing name")
+		debugging && console.log("typing name")
 		await text_input.type(name, {delay: 10});
 		await waitUntilRequestDone(page, 1000)
 		// get from options
@@ -151,10 +157,10 @@ const input_name_script = async (browser, name, debug=false) => {
 		// wait until for a little
 		await waitUntilRequestDone(page, 1000)
 		// click seach button
-		debuging && console.log("clicking search_button")
+		debugging && console.log("clicking search_button")
 		await search_button.click({delay: 1});
 		// wait until new page loads
-		debuging && console.log("waiting for new page to load")
+		debugging && console.log("waiting for new page to load")
 		await waitUntilRequestDone(page, 1000);
 		// get the url value 
 		let url = page.url();
@@ -164,9 +170,9 @@ const input_name_script = async (browser, name, debug=false) => {
 		// save id
 		save_id({ company: name, id, url });
 		// wait until page loads
-		debuging && console.log("clicking on documents online")
-		let document_button =
-				( await page.$x('//span[text()="Documentos Online"]/../..'))[0];
+		debugging && console.log("clicking on documents online")
+		let [ document_button ] =
+				await page.$x('//span[text()="Documentos Online"]/../..');
 		// click the document
 		await document_button.click();
 		// wait for a while
@@ -190,7 +196,7 @@ const input_name_state = make_state(
 /* scrap the documents */
 const company_documents_script = async (browser, debuging=false) => {
 		// get page
-		//let page = ( await browser.pages() )[0];
+		let [ page ] = await browser.pages();
 		// wait until request is rendered
 		await waitUntilRequestDone(page, 100)
 		// all get economic documents
@@ -199,14 +205,16 @@ const company_documents_script = async (browser, debuging=false) => {
 		//await page.mainFrame().waitForTimeout(30000)
 
 		//return { res: true }
-	}
+}
 //hande the economic tab
-const scrap_economic_documents = async (browser, debugging=false) => {
-		let page = ( await browser.pages() )[0];
-		if(page) console.log('got page in scrap_economic_documents')
+const scrap_economic_documents = async (browser) => {
+		let [ page ] = await browser.pages();
+		if(debugging && page) 
+				console.log('got page in scrap_economic_documents')
 		// get page
 		let doc = {}; 
 		// wai until page is done
+		debugging && console.log('waitin for traffic to settle')
 		await waitUntilRequestDone(page, 1500)
 		// get economic tabs 
 		//let economic_tab = 
@@ -214,32 +222,38 @@ const scrap_economic_documents = async (browser, debugging=false) => {
 		// select economic tab
 		//await economic_tab.click()
 		// get table 
-		let tableBox = ( await page.$x('//div[@class="z-tabbox"]'))[0];
+		debugging && console.log('getting tableBox..');
+		let [ tableBox ] = 
+				await page.$x('//div[@class="z-listbox-body"]/table/tbody[2]/tr');
 		// get all items
-		let items = [ 
-				...( await tableBox.$x('//tr[@class="z-listitem"]') ),
-				...( await tableBox.$x('//tr[@class="z-listitem z-listbox-odd"]') ) 
-		]
-		if(items.length > 1){ 
+		let items = 
+				await page.$x('//div[@class="z-listbox-body"]/table/tbody[2]/tr');
+		//...( await tableBox.$x('/tr[@class="z-listitem"]') ),
+		//...( await tableBox.$x('/tr[@class="z-listitem z-listbox-odd"]') ) 
+		//]
+		debugging && console.log(`got ${items.length} douments}`);
+		if(items.length > 0){ 
 				// if there is at least one element
-				let elements = await items[0].$x('//td[@class="z-listcell"]');
+				let elements = await items[3].$x('/td[@class="z-listcell"]');
 				doc['expedient'] = await getText(elements[0])
 				doc['description'] = await getText(elements[1])
 				doc['date'] = await getText(elements[2])
 				doc['button'] = elements[3]
 				// click on document download
+				debugging && console.log('got document')
 				await waitUntilRequestDone(page, 1000)
+				debugging && console.log('clicking on document donwload page')
 				await doc['button'].click()
 				// wait until new page is open
+				await waitUntilRequestDone(page, 2000)
+				// new page did not open
 				if( (await browser.pages()).length === 1 ) 
-						await page.mainFrame().waitForTimeout(100)
-				// switch tabs 
+						throw new Error('Did not open new page');
 				//console.log(await browser.pages())
-				page = (await browser.pages())[1];
-				//console.log(page)
+				// switch tabs 
+				page = ( await browser.pages() )[1];
 				await handle_id_input(page);
 		}
-
 		/*
 		for( let item of items ){
 				let elements = await item.$x('//td[@class="z-listcell"]');
@@ -254,14 +268,20 @@ const scrap_economic_documents = async (browser, debugging=false) => {
 				await doc['button'].click()
 		}
 		*/
-		
 }
 // handle the ecuadorian id input
-const handle_id_input = async (page, debuging) => {
-		await waitUntilRequestDone(page, 1000)
+const handle_id_input = async page => {
+		if(page){
+				console.log("got page in handle_id_input");
+				//console.log(page)
+		}else{
+				console.log("did not get page on handle_id_input");
+				console.log(page);
+		}
+		await waitUntilRequestDone(page, 2000)
 		// handeling the inputting of id
-		let ecuadorian_radio =
-				await page.waitForXPath('//input[@type="radio"]');
+		let [ ecuadorian_radio ] =
+				await page.$x('//input[@type="radio"]');
 		if(ecuadorian_radio){ 
 				console.log("got ecuadorian radio")
 				ecuadorian_radio.click()
@@ -273,8 +293,102 @@ const handle_id_input = async (page, debuging) => {
 		// press search 
 		await page.mainFrame().waitForTimeout(1000)
 		let submit_button = ( await page.$x('//span[@class="z-button"]') )[0];
-		submit_button.click();
+		await submit_button.click();
+		// download document
+		await page.mainFrame().waitForTimeout(1000)
+		await download_document(page);
 }
+
+const download_document = async page => {
+		let [ iframe ] = await page.$x('//iframe');
+		let pdf_url = await page.evaluate( iframe => iframe.src, iframe)
+		//await page._client.send('Page.setDownloadBehavior', 
+		//		{behavior: 'allow', downloadPath: '/home/telix/puppeteer_playground'}
+		//);
+		console.log('got filename:', pdf_url)
+		/*
+		await page.exposeFunction("writeABString", async (strbuf, targetFile) => {
+				const str2ab = function _str2ab(str) { // Convert a UTF-8 String to an ArrayBuffer
+						let buf = new ArrayBuffer(str.length); // 1 byte for each char
+						let bufView = new Uint8Array(buf);
+						for (let i=0, strLen=str.length; i < strLen; i++) {
+								bufView[i] = str.charCodeAt(i);
+						}
+						return buf;
+				}
+				return new Promise((resolve, reject) => {
+						// Convert the ArrayBuffer string back to an ArrayBufffer, which in turn is converted to a Buffer
+						let buf = Buffer.from(str2ab(strbuf));
+						// Try saving the file.        
+						fs.writeFile(targetFile, buf, (err, text) => {
+								if(err) reject(err);
+								else resolve(targetFile);
+						});
+				});
+		});
+		// res
+		let res = await page.evaluate( async () => { 
+				function arrayBufferToString(buffer){ 
+						// Convert an ArrayBuffer to an UTF-8 String
+						var bufView = new Uint8Array(buffer);
+						var length = bufView.length;
+						var result = '';
+						var addition = Math.pow(2,8)-1;
+						for(var i = 0;i<length;i+=addition){
+								if(i + addition > length){
+										addition = length - i;
+								}
+								result += String.fromCharCode.apply(null, bufView.subarray(i,i+addition));
+						}
+						return result;
+				}
+				let [ iframe ] = await $x('//iframe')
+				let geturl = iframe.src;
+				return fetch(geturl, {
+						credentials: 'same-origin', // usefull when we are logged into a website and want to send cookies
+						responseType: 'arraybuffer', // get response as an ArrayBuffer
+				})
+						.then(response => response.arrayBuffer())
+						.then( arrayBuffer => {
+								var bufstring = arrayBufferToString(arrayBuffer);
+								return window.writeABString(bufstring, '/home/telix/puppeteer_playground/somepdf.pdf');
+						})
+						.catch(function (error) {
+								console.error('Request failed: ', error);
+								return error;
+						}); 
+		});
+		*/
+		let res = await page.evaluate( async url => 
+				await fetch(url, {
+						method: 'GET',
+						credentials: 'same-origin', // usefull when we are logged into a website and want to send cookies
+						responseType: 'arraybuffer', // get response as an ArrayBuffer
+				}).then(response => response.text()), 
+				pdf_url 
+		)
+		console.log('res:', res);
+		//const response = await page.goto(pdf);
+		fs.writeFileSync('somepdf.pdf', res);
+		/*
+		const file = await page.evaluate(async pdf => {
+				let res = await fetch( pdf, {
+						method: 'GET',
+						credentials: 'include'
+				});
+				return JSON.stringify(res);
+		}, pdf );
+		if(file){
+				console.log('got file', file)
+				let r = fs.writeFileSync("test.pdf", file);
+				if(r) 
+						console.log("The file was saved!");
+				else 
+						console.error('could not save file', r);
+		}
+		*/
+}
+
 // condition
 const company_documents_condition = async browser => 
 		// if it dow not have a page yet,

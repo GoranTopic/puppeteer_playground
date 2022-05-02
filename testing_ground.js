@@ -167,53 +167,66 @@ async function main(){
 				else return false
 		}
 
-		/* proxy test */
-		// get missing and check integrity
-		[ missing_indexes, checklist ] = check_proxy_integrity(names, checklist)
-		// saved checked list
-		console.log(missing_indexes)
-		save_checklist(checklist);
-
-		// set promise next function
-		engine.setNextPromise( () => 
-				create_proxy_test_promise( missing_indexes.shift(), proxy_r.next() )
-		);
-		// set timeout 1000ms * 60s * 1m
-		engine.setTimeout(1000 * 60 * 1/2 );
-		//set stop function
-		engine.setStopFunction(stopFunction);
-		// set call backs 
-		engine.whenRejected(whenProxyRejected);
-		engine.whenFulfilled(whenProxyFufilled);
-		//engine.whenResolved(isResolved_callback);
+		const proxy_test = async () => {
+				/* proxy test */
+				// get missing and check integrity
+				[ missing_indexes, checklist ] = check_proxy_integrity(names, checklist)
+				// saved checked list
+				console.log(missing_indexes)
+				save_checklist(checklist);
+				// set promise next function
+				engine.setNextPromise( () => 
+						create_proxy_test_promise( missing_indexes.shift(), proxy_r.next() )
+				);
+				// set timeout 1000ms * 60s * 1m
+				engine.setTimeout(1000 * 60 * 1/2 );
+				//set stop function
+				engine.setStopFunction(stopFunction);
+				// set call backs 
+				engine.whenRejected(whenProxyRejected);
+				engine.whenFulfilled(whenProxyFufilled);
+				//engine.whenResolved(isResolved_callback);
+				await engine.start()
+				// done message
+						.then(() => console.log("done =)"))
+		}	
 		
-		
-		/* timeout test */
-		/*
-		// get missing and check integrity
-		[ missing_indexes, checklist ] = check_timeout_integrity(names, checklist)
-		// saved checked list
-		console.log(missing_indexes)
-		save_checklist(checklist);
-		// set promise next function
-		engine.setNextPromise( () => 
-				create_timeout_promise( names, missing_indexes.shift(), proxy_r.next() )
-		);
-		// set timeout 1000ms * 10s
-		engine.setTimeout(1000 * 10);
-		// set timeout
-		engine.setTimeout(100);
-		//set stop function
-		engine.setStopFunction(stopFunction);
-		// set call backs 
-		engine.whenRejected(isRejected_callback);
-		engine.whenFulfilled(isFulfilled_callback);
-		*/
+		const timeout_test = async () => {
+				/* timeout test */
+				// get missing and check integrity
+				[ missing_indexes, checklist ] = check_timeout_integrity(names, checklist)
+				// saved checked list
+				console.log(missing_indexes)
+				save_checklist(checklist);
+				// set promise next function
+				engine.setNextPromise( () => 
+						create_timeout_promise( names, missing_indexes.shift(), proxy_r.next() )
+				);
+				// set timeout 1000ms * 10s
+				engine.setTimeout(1000 * 10);
+				// set timeout
+				engine.setTimeout(100);
+				//set stop function
+				engine.setStopFunction(stopFunction);
+				// set call backs 
+				engine.whenRejected(isRejected_callback);
+				engine.whenFulfilled(isFulfilled_callback);
+				// start
+				await engine.start()
+				// done message
+						.then(() => console.log("done =)"))
+		}
 
-		// start
-		await engine.start()
-		// done message
-				.then(() => console.log("done =)"))
+		//await timeout_test()
+		//await proxy_test()
+
+		const company_documents_page = 'https://appscvsmovil.supercias.gob.ec/portaldedocumentos';
+		const url = 'https://appscvsmovil.supercias.gob.ec/portaldedocumentos/consulta_cia_expediente.zul?numExpediente=10254';
+		let re  = new RegExp(company_documents_page + ".*");
+		console.log(re);
+		let res = url.match(re)
+		if(res) console.log(true)
+		else console.log(false)
 }
 
 main();
