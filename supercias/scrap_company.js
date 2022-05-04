@@ -60,10 +60,10 @@ const scrap_company = ( browser, name ) =>
 		});
 
 const make_state = (condition, script) => 
-		async (browser, name, debuging) => { 
-				if(await condition(browser, debuging)) 
-						await script(browser, name, debuging) 
-		}
+		async (browser, name, debuging) =>  
+		(await condition(browser, debuging)) &&
+				( await script(browser, name, debuging) )
+		
 
 // setters and getting for saving the ids
 const ids_output_file = 'mined_data/company_ids.json';
@@ -203,7 +203,6 @@ const company_documents_script = async (browser, debuging=false) => {
 		await scrap_economic_documents(browser, debuging);
 		// wait
 		//await page.mainFrame().waitForTimeout(30000)
-
 		//return { res: true }
 }
 //hande the economic tab
@@ -214,27 +213,24 @@ const scrap_economic_documents = async (browser) => {
 		// get page
 		let doc = {}; 
 		// wai until page is done
-		debugging && console.log('waitin for traffic to settle')
+		debugging && console.log('waiting for traffic to settle')
 		await waitUntilRequestDone(page, 1500)
 		// get economic tabs 
-		//let economic_tab = 
-		//( await page.$x('//span[text()="Documentos Económicos"]/../../../..'))[0];
-		// select economic tab
-		//await economic_tab.click()
 		// get table 
 		debugging && console.log('getting tableBox..');
-		let [ tableBox ] = 
-				await page.$x('//div[@class="z-listbox-body"]/table/tbody[2]/tr');
+		let [ table_general, table_juridic, table_economic ] = 
+				await page.$x('(//div[@class="z-listbox-body"]/table/tbody)[1]/tr');
 		// get all items
 		let items = 
-				await page.$x('//div[@class="z-listbox-body"]/table/tbody[2]/tr');
+				await page.$x('(//div[@class="z-listbox-body"])[1]/table/tbody[2]/tr');
+		console.log( await getText(items));
 		//...( await tableBox.$x('/tr[@class="z-listitem"]') ),
 		//...( await tableBox.$x('/tr[@class="z-listitem z-listbox-odd"]') ) 
 		//]
-		debugging && console.log(`got ${items.length} douments}`);
+		debugging && console.log(`got ${items.length} documents`);
 		if(items.length > 0){ 
 				// if there is at least one element
-				let elements = await items[3].$x('/td[@class="z-listcell"]');
+				let elements = await items[1].$x('./td[@class="z-listcell"]');
 				doc['expedient'] = await getText(elements[0])
 				doc['description'] = await getText(elements[1])
 				doc['date'] = await getText(elements[2])
@@ -254,26 +250,11 @@ const scrap_economic_documents = async (browser) => {
 				page = ( await browser.pages() )[1];
 				await handle_id_input(page);
 		}
-		/*
-		for( let item of items ){
-				let elements = await item.$x('//td[@class="z-listcell"]');
-				doc['expedient'] = await getText(elements[0])
-				doc['description'] = await getText(elements[1])
-				doc['date'] = await getText(elements[2])
-				doc['button'] = elements[3]
-//let doc_buttton = ( await item.$x('//td[@class="z-listcell"][4]'))[0];
-				console.log('doc:', doc );
-//await doc_buttton.click()
-				await waitUntilRequestDone(page, 1000)
-				await doc['button'].click()
-		}
-		*/
 }
 // handle the ecuadorian id input
 const handle_id_input = async page => {
 		if(page){
 				console.log("got page in handle_id_input");
-				//console.log(page)
 		}else{
 				console.log("did not get page on handle_id_input");
 				console.log(page);
@@ -298,97 +279,28 @@ const handle_id_input = async page => {
 		await page.mainFrame().waitForTimeout(1000)
 		await download_document(page);
 }
-
-const download_document = async page => {
+//	 downlaod ad document from a page
+const download_document = async ( page ) => {
 		let [ iframe ] = await page.$x('//iframe');
 		let pdf_url = await page.evaluate( iframe => iframe.src, iframe)
 		//await page._client.send('Page.setDownloadBehavior', 
 		//		{behavior: 'allow', downloadPath: '/home/telix/puppeteer_playground'}
 		//);
 		console.log('got filename:', pdf_url)
-		/*
-		await page.exposeFunction("writeABString", async (strbuf, targetFile) => {
-				const str2ab = function _str2ab(str) { // Convert a UTF-8 String to an ArrayBuffer
-						let buf = new ArrayBuffer(str.length); // 1 byte for each char
-						let bufView = new Uint8Array(buf);
-						for (let i=0, strLen=str.length; i < strLen; i++) {
-								bufView[i] = str.charCodeAt(i);
-						}
-						return buf;
-				}
-				return new Promise((resolve, reject) => {
-						// Convert the ArrayBuffer string back to an ArrayBufffer, which in turn is converted to a Buffer
-						let buf = Buffer.from(str2ab(strbuf));
-						// Try saving the file.        
-						fs.writeFile(targetFile, buf, (err, text) => {
-								if(err) reject(err);
-								else resolve(targetFile);
-						});
-				});
-		});
-		// res
-		let res = await page.evaluate( async () => { 
-				function arrayBufferToString(buffer){ 
-						// Convert an ArrayBuffer to an UTF-8 String
-						var bufView = new Uint8Array(buffer);
-						var length = bufView.length;
-						var result = '';
-						var addition = Math.pow(2,8)-1;
-						for(var i = 0;i<length;i+=addition){
-								if(i + addition > length){
-										addition = length - i;
-								}
-								result += String.fromCharCode.apply(null, bufView.subarray(i,i+addition));
-						}
-						return result;
-				}
-				let [ iframe ] = await $x('//iframe')
-				let geturl = iframe.src;
-				return fetch(geturl, {
-						credentials: 'same-origin', // usefull when we are logged into a website and want to send cookies
-						responseType: 'arraybuffer', // get response as an ArrayBuffer
-				})
-						.then(response => response.arrayBuffer())
-						.then( arrayBuffer => {
-								var bufstring = arrayBufferToString(arrayBuffer);
-								return window.writeABString(bufstring, '/home/telix/puppeteer_playground/somepdf.pdf');
-						})
-						.catch(function (error) {
-								console.error('Request failed: ', error);
-								return error;
-						}); 
-		});
-		*/
-		let res = await page.evaluate( async url => 
-				await fetch(url, {
-						method: 'GET',
-						credentials: 'same-origin', // usefull when we are logged into a website and want to send cookies
-						responseType: 'arraybuffer', // get response as an ArrayBuffer
-				}).then(response => response.text()), 
-				pdf_url 
-		)
-		console.log('res:', res);
+		let pdfString = await page.evaluate( async url => 
+				new Promise(async (resolve, reject) => {
+						const reader = new FileReader();
+						const response = await window.fetch(url);
+						const data = await response.blob();
+						reader.readAsBinaryString(data);
+						reader.onload = () => resolve(reader.result);
+						reader.onerror = () => reject('Error occurred while reading binary string');
+				}), pdf_url
+		);
 		//const response = await page.goto(pdf);
-		fs.writeFileSync('somepdf.pdf', res);
-		/*
-		const file = await page.evaluate(async pdf => {
-				let res = await fetch( pdf, {
-						method: 'GET',
-						credentials: 'include'
-				});
-				return JSON.stringify(res);
-		}, pdf );
-		if(file){
-				console.log('got file', file)
-				let r = fs.writeFileSync("test.pdf", file);
-				if(r) 
-						console.log("The file was saved!");
-				else 
-						console.error('could not save file', r);
-		}
-		*/
+		const pdfData = Buffer.from(pdfString, 'binary');
+		fs.writeFileSync('somepdf.pdf', pdfData);
 }
-
 // condition
 const company_documents_condition = async browser => 
 		// if it dow not have a page yet,
@@ -400,7 +312,7 @@ const company_documents_state = make_state(
 		company_documents_condition,
 		company_documents_script
 )
-
+// time out function 
 const timeoutAfter = timeout => {
   return new Promise((resolve, reject) => {
 		setTimeout(() => reject(`timed out after ${timeout}ms`), timeout);
