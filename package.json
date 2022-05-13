@@ -7,15 +7,16 @@
   "scripts": {
     "start": "node start.js",
     "main": "node main.js",
+    "test": "node testing_ground.js",
     "ids": "node ids_scrap.js",
     "names": "node random_name_scrap.js",
     "random_names": "node random_name_scrap.js",
-    "dfst_names": "node dfst_name_scrap.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dfst_names": "node dfst_name_scrap.js"
   },
   "author": "Gora Topic",
   "license": "ISC",
   "dependencies": {
-    "puppeteer": "^13.5.2"
+    "puppeteer": "^13.5.2",
+    "tesseract.js": "^2.1.5"
   }
 }

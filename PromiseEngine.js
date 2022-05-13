@@ -21,17 +21,18 @@ export default class PromiseEngine {
 		setPromiseList =  promiseArray  => this.promiseArray = promiseArray;
 		setPromiseGen =  promiseGen  => this.promiseGen = promiseGen;
 		setTimeout =  timeout  => this.timeout = timeout;
-		whenFulfilled = fulfillmentCB => this.fulfillmentCB = fulfillmentCB
-		whenRejected = rejectionCB => this.rejectionCB = rejectionCB
-		whenResolved = resolvedCB => this.resolvedCB = resolvedCB
+		whenFulfilled = fulfillmentCB => this.fulfillmentCB = fulfillmentCB;
+		whenTimedOut = timeoutCB => this.timeoutCB = timeoutCB;
+		whenRejected = rejectionCB => this.rejectionCB = rejectionCB;
+		whenResolved = resolvedCB => this.resolvedCB = resolvedCB;
 
-
+		/* returns a new from the promise soruces specified */
 		_getNewPromise(){
 				let newPromise = null;
 				if(this.promiseArray){
 						if(this.promiseArray.length === 0){
 								this.halt = true;
-								throw  new Error('list has no more values')
+								throw new Error('list has no more values')
 						}else 
 								newPromise = this.promiseArray.shift();
 				}else if(this.nextPromise){
@@ -52,11 +53,13 @@ export default class PromiseEngine {
 				if(newPromise === null) throw new Error('could not get new promise')
 				else return newPromise;
 		}
-		
-		_timeoutAfter = timeout => 
-				new Promise((resolve, reject) => {
+
+		// this is a timeout 
+		_timeoutAfter = timeout => new Promise(
+				(resolve, reject) => {
 						setTimeout(() => reject(new Error(`timed out`)), timeout);
-				})
+				}
+		)
 
 		_promiseMonitor(promise) {
 				/* promise wrapper for promise, a promise condom, if you will... */
@@ -65,10 +68,11 @@ export default class PromiseEngine {
 				var isResolved = false
 				var isFulfilled = false;
 				var isRejected = false;
+				var isTimedOut = false;
 				var value = null;
 				var result;
-				// if it has timeout
-				if(this.timeout){ 
+				// if it has timedout
+				if(this.timeout){  
 						var promises = [ promise, this._timeoutAfter(this.timeout) ]
 						result = Promise.race(promises)
 				}else

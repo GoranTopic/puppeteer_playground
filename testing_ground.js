@@ -4,6 +4,7 @@ import { save_cookies, read_cookies } from './utils.js'
 import browserOptions from './options/browser.js'
 import PromiseEngine from './PromiseEngine.js';
 import puppeteer from 'puppeteer';
+import Tesseract from 'tesseract.js';
 
 // create new browser
 const start_new_browser = async ( proxy, options ) => {
@@ -88,7 +89,6 @@ const check_proxy_integrity = (names, checklist) => {
 		)
 		return [ missing, table ];
 }
-
 
 async function main(){
 		/* the main show */
@@ -220,13 +220,14 @@ async function main(){
 		//await timeout_test()
 		//await proxy_test()
 
-		const company_documents_page = 'https://appscvsmovil.supercias.gob.ec/portaldedocumentos';
-		const url = 'https://appscvsmovil.supercias.gob.ec/portaldedocumentos/consulta_cia_expediente.zul?numExpediente=10254';
-		let re  = new RegExp(company_documents_page + ".*");
-		console.log(re);
-		let res = url.match(re)
-		if(res) console.log(true)
-		else console.log(false)
+		Tesseract.recognize(
+				'/home/telix/Downloads/88411271629504537905477427062903.png',
+				'eng',
+				//{ logger: m => console.log(m) }
+		).then( ({ data: { text } }) => {
+				console.log(text);
+		})
+
 }
 
 main();
